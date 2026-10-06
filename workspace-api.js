@@ -1,0 +1,62 @@
+/* Jing Workspace: private backend adapter. Never place provider keys here. */
+(() => {
+  const key = 'jingWorkspaceConnectionV1';
+  let config; try { config = JSON.parse(localStorage.getItem(key) || '{}'); } catch { config = {}; }
+  let busy = false, status = null;
+  function base() { return String(config.backendUrl || '').replace(/\/$/, ''); }
+  async function request(path, body) {
+    if (!base()) throw new Error('请先设置后端地址。');
+    const response = await fetch(base() + path, { method: body === undefined ? 'GET' : 'POST', credentials: 'include', headers: body === undefined ? {} : {'Content-Type':'application/json'}, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(60000) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `连接失败 (${response.status})`);
+    return data;
+  }
+  window.openWorkspaceConnection = function () {
+    openModal(`<h2>AI & Gmail settings</h2><p class="small">GitHub Pages hosts this website. A private backend handles DeepSeek and Gmail. API keys belong in server environment variables.</p><div class="field"><label>Backend URL</label><input class="form-input" id="workspaceBackend" type="url" value="${escapeText(base())}" placeholder="https://your-private-backend.example.com"></div><div class="settings-actions"><button class="btn" onclick="saveWorkspaceConnection()">Save & check connection</button></div><div id="connectionState" class="course-note">${status ? escapeText(status.authenticated ? '已登录私人后端' : '请登录私人后端') : '未检测连接'}</div><div class="field"><label>Private backend password (not saved in this browser)</label><input class="form-input" id="backendPassword" type="password" autocomplete="off"></div><button class="btn ghost" onclick="loginWorkspaceBackend()">Sign in to backend</button><label class="check-row"><input type="checkbox" id="gmailAiConsent" ${config.gmailAiConsent ? 'checked' : ''} onchange="setGmailAiConsent(this.checked)"><span>允许将最近 7 天邮件的发件人、主题和已过滤的简短摘要发送到我的后端及 DeepSeek，用于分析待办。不会发送附件或完整正文。</span></label><div class="settings-actions"><button class="btn ghost" onclick="connectWorkspaceGmail()">Connect Gmail (read only)</button><button class="btn ghost" onclick="syncWorkspaceGmail()">Refresh mail</button><button class="btn ghost" onclick="disconnectWorkspaceGmail()">Disconnect Gmail</button><button class="btn ghost" onclick="logoutWorkspaceBackend()">Sign out</button></div><p class="small">自动刷新仅在网页打开时运行。Google 的授权页面会展示实际读取权限；尚未配置后端时这些连接功能不可用。</p>`);
+  };
+  window.saveWorkspaceConnection = async function () {
+    try {
+      const value = document.getElementById('workspaceBackend').value.trim().replace(/\/$/, '');
+      const parsed = new URL(value);
+      if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && ['localhost','127.0.0.1'].includes(parsed.hostname))) throw new Error('请使用 HTTPS 后端地址，本地测试可用 localhost。');
+      if(parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== '/') throw new Error('请输入不含密钥、参数或路径的后端根地址。');
+      config.backendUrl = value; localStorage.setItem(key, JSON.stringify(config));
+      status = await request('/api/status'); openWorkspaceConnection();
+      document.getElementById('connectionState').textContent = `后端已连接 · DeepSeek ${status.aiConfigured ? '已配置' : '待配置'} · Gmail ${status.gmailConnected ? '已授权' : '未授权'}`;
+    } catch(e) { toast(e.message); }
+  };
+  window.loginWorkspaceBackend = async function () { try { const input = document.getElementById('backendPassword'); const password = input.value; input.value = ''; await request('/api/login', {password}); status = await request('/api/status'); openWorkspaceConnection(); toast('后端已登录'); } catch(e) { toast(e.message); } };
+  window.setGmailAiConsent = function(value) { config.gmailAiConsent = Boolean(value); localStorage.setItem(key,JSON.stringify(config)); };
+  window.connectWorkspaceGmail = async function () { try { const s = await request('/api/status'); if (!s.authenticated) throw new Error('请先登录私人后端。'); if (!s.gmailConfigured) throw new Error('服务器尚未配置 Google OAuth。'); window.open(base() + '/auth/google/start', '_blank', 'noopener'); } catch(e) { toast(e.message); } };
+  function emptyMail() { mails.splice(0); Object.assign(gmailSnapshot,{account:'Not connected',lastSync:'Not connected',inboxUnread:0}); renderGmailSnapshot(); renderDashboard(); }
+  window.syncWorkspaceGmail = async function(quiet=false) { try { const data = await request('/api/gmail/snapshot'); mails.splice(0,mails.length,...data.emails); Object.assign(gmailSnapshot,{account:data.account,lastSync:data.lastSync,inboxUnread:data.inboxUnread}); renderGmailSnapshot(); renderDashboard(); if(!quiet) toast(`${data.emails.length} 个邮件会话已刷新`); } catch(e) { document.getElementById('lastGmailSync').textContent='同步失败 · 当前显示未刷新'; if(!quiet)toast(e.message); } };
+  window.disconnectWorkspaceGmail = async function () { try { await request('/api/gmail/disconnect',{}); emptyMail(); toast('已断开本工作台的 Gmail 连接'); } catch(e) { toast(e.message); } };
+  window.logoutWorkspaceBackend = async function () { try { await request('/api/logout',{}); status=null; emptyMail(); toast('已退出后端'); } catch(e) { toast(e.message); } };
+  showSyncInfo = openWorkspaceConnection;
+  const localAnswer = workspaceAnswer;
+  openAssistant = function () {
+    const history = workspaceState.chat.slice(-10);
+    openModal(`<h2>Ask a Question · Jing Workspace</h2><p class="small">${base() ? '通过你的私人后端调用模型。邮件仅在勾选分析选项后读取。' : '本地规则模式 · 尚未连接 DeepSeek，可查看本地任务状态。'}</p><button class="btn ghost" onclick="openWorkspaceConnection()">AI & Gmail settings</button><div class="assistant-thread" id="assistantThread">${history.map(m=>`<div class="assistant-msg ${m.role==='user'?'user':'ai'}">${escapeText(m.text)}</div>`).join('')}</div><textarea id="assistantQuestion" placeholder="我最近有哪些需要处理的邮件和作业？" ${busy?'disabled':''}></textarea><label class="check-row"><input type="checkbox" id="askIncludeGmail" ${config.gmailAiConsent?'checked':''} ${busy?'disabled':''}><span>分析最近 7 天的 Gmail 摘要（发送至后端与 DeepSeek）</span></label><button class="btn" onclick="askWorkspace()" ${busy?'disabled':''}>${busy?'正在分析…':'Ask'}</button>`);
+  };
+  function context() {
+    return { date:new Date().toISOString(), assignments:(workspaceState.customAssignments||[]).slice(0,30).map(a=>({title:a.title,course:a.course,done:a.done,dueAt:a.dueAt})), generatedAssignments:(workspaceState.generatedAssignments||[]).slice(0,20).map(a=>({title:a.title,course:a.course,source:a.source,done:a.done})), tasks:(workspaceState.miscTasks||[]).slice(0,30).map(t=>({title:t.title,done:t.done,dueAt:t.dueAt})), events:(workspaceState.events||[]).slice(0,30).map(e=>({title:e.title,date:e.date,time:e.time,end:e.end,recurring:e.recurring})), papers:(workspaceState.papers||[]).filter(p=>p.fileName||!/^p[1-4]$/.test(p.id)).slice(0,20).map(p=>({title:p.title,status:p.status,course:p.course})) };
+  }
+  async function ask(question,includeGmail) {
+    if(busy)return;
+    if(includeGmail && !config.gmailAiConsent) { toast('请先在 AI & Gmail settings 中确认邮件摘要分析。'); return; }
+    busy=true; workspaceState.chat.push({role:'user',text:question}); saveWorkspaceState(); openAssistant();
+    try {
+      let text;
+      if(!base()) { if(includeGmail)throw new Error('尚未连接私人后端，无法读取 Gmail。'); text='[本地规则模式，非 AI 分析]\n'+localAnswer(question); }
+      else { const result=await request('/api/ask',{question,includeGmail,consent:includeGmail&&config.gmailAiConsent,context:context()}); text=result.answer; if(includeGmail) await syncWorkspaceGmail(true); }
+      workspaceState.chat.push({role:'ai',text}); saveWorkspaceState();
+    } catch(e) { workspaceState.chat.push({role:'ai',text:'未完成分析：'+e.message}); saveWorkspaceState(); }
+    finally { busy=false; openAssistant(); }
+  }
+  askWorkspace=function(){const input=document.getElementById('assistantQuestion'),q=input?.value.trim();if(q)ask(q,Boolean(document.getElementById('askIncludeGmail')?.checked));};
+  askFromDashboard=function(){const input=document.getElementById('dashboardAsk'),q=input?.value.trim();if(q){input.value='';ask(q,false);}};
+  document.getElementById('askAI').onclick=openAssistant;
+  const notice=document.createElement('div'); notice.className='small';notice.style.cssText='padding:8px 0;color:var(--muted)';notice.textContent='Published edition · Courses, assignment examples and market figures are demonstrations. Upload your files and create your own tasks. Gmail and cloud AI require connection.';document.getElementById('dashboard').prepend(notice);
+  const settings=document.createElement('button'); settings.className='btn ghost';settings.textContent='AI & Gmail settings';settings.onclick=openWorkspaceConnection;document.querySelector('#mail .toolbar').appendChild(settings);
+  setInterval(()=>{if(base()&&document.visibilityState==='visible')syncWorkspaceGmail(true);},3600000);
+})();

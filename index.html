@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Jing Workspace</title>
+<style>
+:root {
+  --bg:#f5f4fb;
+  --panel:#ffffff;
+  --ink:#171923;
+  --muted:#74798a;
+  --line:#e9e7f1;
+  --accent:#6f63d9;
+  --accent2:#8e86ef;
+  --soft:#efedff;
+  --dark:#1f2130;
+  --good:#2e9b72;
+  --warn:#e3933b;
+  --danger:#d45757;
+  --sidebar:#465b49;
+  --shadow:0 10px 30px rgba(43,37,87,.08);
+  --radius:20px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit}
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.sidebar{background:var(--sidebar);color:#fff;padding:22px 18px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;transition:background .25s ease}
+.brand{display:flex;gap:12px;align-items:center;padding:8px 8px 24px}
+.logo{width:40px;height:40px;border-radius:14px;background:rgba(124,205,151,.18);color:#8ed7a8;display:grid;place-items:center;font-size:24px;font-weight:800}
+.brand h1{font-size:16px;margin:0}
+.brand small{color:#aeb2c6}
+.nav{display:flex;flex-direction:column;gap:6px}
+.nav button{border:0;background:transparent;color:#e2e7e1;text-align:left;padding:10px 11px;border-radius:12px;cursor:pointer;display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:9px}
+.nav button.active,.nav button:hover{background:rgba(255,255,255,.14);color:#fff}
+.nav-icon{width:28px;height:28px;display:grid;place-items:center;color:currentColor;line-height:1}
+.nav-icon svg,.ai-feature-icon svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button.active .nav-icon{filter:drop-shadow(0 3px 5px rgba(0,0,0,.18))}
+.nav-count{min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#f06476;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800}
+.ai-nav-section{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
+.ai-nav-title{font-size:12px;color:#bfc9bf;padding:0 10px 7px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.ai-nav-section button{width:100%;border:0;background:transparent;color:#dce3dc;text-align:left;padding:9px 10px;border-radius:11px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.ai-nav-section button:hover{background:rgba(255,255,255,.09);color:#fff}
+.ai-feature-icon{width:27px;height:27px;display:grid;place-items:center;color:#f2f5f2}
+.sidebar-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding-top:14px;display:grid;gap:8px}
+.ai-btn{width:100%;border:0;background:linear-gradient(135deg,#786be1,#938af4);color:white;padding:12px;border-radius:14px;cursor:pointer;font-weight:700}
+.settings-btn{width:100%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#d7d9e5;padding:11px 12px;border-radius:14px;cursor:pointer;text-align:left}
+.settings-btn:hover{background:rgba(255,255,255,.11);color:#fff}
+.main{padding:22px 28px 40px;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.search{background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 14px;min-width:320px}
+.avatar{width:38px;height:38px;border-radius:50%;background:#dedaf8;display:grid;place-items:center;font-weight:700;color:#5f56be;cursor:pointer;background-size:cover;background-position:center;box-shadow:0 0 0 3px rgba(111,99,217,.10)}
+.avatar.has-image{color:transparent}
+.page{display:none}
+.page.active{display:block}
+.hero{position:relative;border-radius:26px;overflow:hidden;min-height:190px;background-image:linear-gradient(90deg,rgba(31,33,48,.60),rgba(31,33,48,.18)),linear-gradient(125deg,#809d92,#ceded8 65%,#d8c9eb);background-size:cover;background-position:center 48%;box-shadow:var(--shadow);padding:32px;color:white}
+.hero:after{content:"";position:absolute;inset:0;backdrop-filter:blur(1.7px);pointer-events:none}
+.hero-content{position:relative;z-index:1;max-width:650px}
+.hero h2{font-size:32px;margin:0 0 8px}
+.hero p{margin:0;color:#f0eefb}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.stat strong{font-size:26px;display:block}
+.stat span{color:var(--muted);font-size:13px}
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.section-title h3{margin:0;font-size:18px}
+.link{color:var(--accent);font-size:13px;cursor:pointer}
+.focus-item,.mail-row,.paper-row,.assignment-row,.stock-row,.course-row{border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:10px;background:#fff}
+.focus-item{display:grid;grid-template-columns:42px 1fr auto;gap:12px;align-items:center}
+.num{width:34px;height:34px;border-radius:12px;background:var(--soft);color:var(--accent);display:grid;place-items:center;font-weight:800}
+.badge{font-size:11px;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--accent);display:inline-block}
+.badge.good{background:#eaf7f1;color:var(--good)} .badge.warn{background:#fff3e6;color:var(--warn)} .badge.danger{background:#fdecec;color:var(--danger)}
+.small{font-size:12px;color:var(--muted)}
+.btn{border:0;border-radius:12px;padding:9px 12px;cursor:pointer;background:var(--accent);color:#fff}
+.btn.ghost{background:#f1effa;color:#5d55b8}
+.timeline{display:flex;flex-direction:column;gap:12px}
+.time-row{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:start}
+.time-row .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:8px}
+.module-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+.module-card h4{margin:0 0 6px}
+.module-card{cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
+.module-card:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(43,37,87,.12)}
+.module-card p{margin:0;color:var(--muted);font-size:13px}
+h2.page-title{margin:4px 0 16px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+.pill.active{background:var(--soft);color:var(--accent);border-color:#d8d2ff}
+.mail-layout{display:grid;grid-template-columns:180px minmax(320px,.9fr) 1.35fr;gap:14px;min-height:650px}
+.mail-cats .pill{width:100%;text-align:left;margin-bottom:8px}
+.mail-row{cursor:pointer}
+.mail-row.active{border-color:#cfc9ff;background:#faf9ff}
+.mail-detail h3{margin-top:4px}
+.ai-summary{background:#f5f3ff;border-radius:16px;padding:14px;margin-bottom:14px}
+.connection-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1px solid #dcefe6;background:#f7fbf9;border-radius:15px;margin-bottom:14px}
+.connection-dot{width:9px;height:9px;border-radius:50%;background:var(--good);box-shadow:0 0 0 4px rgba(46,155,114,.12)}
+.mail-row-top{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.mail-time{font-size:12px;color:var(--muted);white-space:nowrap}
+.unread-mark{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px}
+.course-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.course-card{padding:20px}
+.course-card h3{margin:8px 0}
+.course-card .imported{margin:12px 0;padding:10px 12px;border-radius:12px;background:#f4f2ff;color:#5f56be;font-size:13px;font-weight:700}
+.resource-list{display:grid;gap:10px;margin-top:12px}
+.resource-row{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:15px;padding:12px;background:#fff}
+.resource-icon{width:44px;height:44px;border-radius:12px;background:var(--soft);color:var(--accent);display:grid;place-items:center;font-size:12px;font-weight:800}
+.resource-meta b{display:block;margin-bottom:4px}
+.resource-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.resource-actions a{text-decoration:none}
+.course-note{padding:12px 14px;border-radius:14px;background:#f7fbf9;border:1px solid #dcefe6;color:#26785a;margin:12px 0}
+.lecture-note-card{border:1px solid var(--line);border-radius:16px;padding:15px;margin:12px 0;background:#fff}.lecture-note-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}.lecture-note-head b{font-size:14px}.lecture-note-card textarea{min-height:92px}.lecture-reminder{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;padding:9px 11px;border-radius:11px;background:#f6f5fb;color:var(--muted);font-size:12px}.file-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.danger-text{color:var(--danger)!important;border-color:#f0cccc!important}.danger-text:hover{background:#fff0f0!important}.map-stack{display:grid;gap:12px}.lecture-map{padding:14px;border:1px solid var(--line);border-radius:15px;background:linear-gradient(135deg,#fff,#faf9ff)}.lecture-map h4{margin:0 0 10px}.quiz-keywords{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.keyword-card{padding:11px;border-radius:12px;background:#f7f6fc;border:1px solid var(--line)}.keyword-card b{display:block;margin-bottom:4px}.quiz-question{padding:14px;border:1px solid var(--line);border-radius:14px;margin:10px 0;background:#fff}.quiz-question>p{margin-top:0;font-weight:700}.source-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:99px;background:#eef2f7;color:#657080;font-size:10px;font-weight:700}.generated-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.generated-assignment{border:1px solid var(--line);border-radius:15px;padding:14px;background:#fff}.generated-assignment h4{margin:7px 0 5px}.generated-assignment p{margin:0 0 10px}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.setting-section{border:1px solid var(--line);border-radius:18px;padding:16px;background:#fff}
+.setting-section h3{margin-top:0}
+.field{display:grid;gap:7px;margin:13px 0}
+.field label{font-size:13px;color:var(--muted);font-weight:700}
+.field input[type="text"]{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;color:var(--ink)}
+.profile-preview{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:var(--soft)}
+.profile-preview-avatar{width:52px;height:52px;border-radius:50%;background:#dedaf8;color:var(--accent);display:grid;place-items:center;font-weight:800;background-size:cover;background-position:center}
+.theme-options{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.theme-choice{border:1px solid var(--line);background:#fff;border-radius:13px;padding:10px;cursor:pointer;text-align:left;color:var(--ink)}
+.theme-choice.active{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 15%,transparent)}
+.theme-swatch{height:30px;border-radius:9px;margin-bottom:7px}
+.color-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.color-input{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:7px 10px}
+.color-input input{width:36px;height:30px;border:0;background:transparent;padding:0;cursor:pointer}
+.settings-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+.progress{height:9px;border-radius:99px;background:#eceaf5;overflow:hidden;margin:10px 0}
+.progress>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px}
+.tab{border:0;background:#f5f4fa;padding:8px 11px;border-radius:10px;cursor:pointer}
+.tab.active{background:var(--soft);color:var(--accent)}
+.upload{border:2px dashed #d9d4ef;border-radius:18px;padding:26px;text-align:center;background:#fbfaff}
+.mindmap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0}
+.node{padding:9px 12px;background:#f2f0ff;border:1px solid #ddd8ff;border-radius:12px}
+.arrow{color:#9a95b7}
+.quiz-card{background:#faf9ff;border:1px solid #e1def7;border-radius:16px;padding:16px}
+.option{display:block;margin:8px 0;padding:9px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{border-bottom:1px solid var(--line);padding:11px 8px;text-align:left;font-size:13px}
+.spark{height:36px;display:flex;align-items:end;gap:3px}
+.spark span{width:7px;background:#8d84e8;border-radius:4px 4px 0 0}
+.stock-row{display:grid;grid-template-columns:1fr 90px 90px 120px 110px;align-items:center;gap:12px}
+.pos{color:var(--good);font-weight:700} .neg{color:var(--danger);font-weight:700}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.day{min-height:150px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;font-size:12px}
+.event{margin-top:6px;padding:5px 7px;background:var(--soft);border-radius:8px;color:#5c54b8}
+.modal{position:fixed;inset:0;background:rgba(28,29,39,.48);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}
+.modal.open{display:flex}
+.modal-box{width:min(880px,95vw);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.25)}
+.close{float:right;border:0;background:#f3f2f7;border-radius:10px;padding:7px 10px;cursor:pointer}
+textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:14px;padding:12px}
+.form-input,.form-select{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;color:var(--ink)}
+.check-row{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+.check-row:last-child{border-bottom:0}
+.check-row input{margin-top:3px;accent-color:var(--accent)}
+.check-row.done span{text-decoration:line-through;color:var(--muted)}
+.clickable{cursor:pointer;transition:border-color .18s ease,background .18s ease}
+.clickable:hover{border-color:#cfc9ff;background:#faf9ff}
+.concept-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.concept-card{border:1px solid var(--line);border-radius:14px;padding:13px;background:#fff;cursor:pointer}
+.concept-card:hover{border-color:var(--accent);background:var(--soft)}
+.modal-section{margin-top:16px}
+.empty-state{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:16px}
+.save-note{font-size:12px;color:var(--good);min-height:16px;margin-top:6px}
+.event{cursor:pointer}
+.assistant-thread{display:grid;gap:10px;max-height:300px;overflow:auto;margin:12px 0}
+.assistant-msg{padding:11px 13px;border-radius:14px;max-width:88%}
+.assistant-msg.user{background:var(--accent);color:#fff;margin-left:auto}
+.assistant-msg.ai{background:var(--soft);color:var(--ink)}
+.mini-chart{height:150px;display:flex;align-items:flex-end;gap:8px;padding:18px;border-radius:16px;background:linear-gradient(180deg,var(--soft),#fff)}
+.mini-chart span{flex:1;max-width:24px;background:linear-gradient(180deg,var(--accent2),var(--accent));border-radius:7px 7px 2px 2px;min-height:12px}
+.status-toast{position:fixed;right:24px;bottom:24px;background:var(--dark);color:#fff;padding:12px 16px;border-radius:13px;box-shadow:var(--shadow);z-index:50;opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}
+.status-toast.show{opacity:1;transform:translateY(0)}
+.topbar{background:rgba(255,255,255,.76);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.8);border-radius:18px;padding:9px 12px;box-shadow:0 8px 24px rgba(46,59,47,.06)}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.top-date{font-size:13px;color:var(--muted);padding-right:10px;border-right:1px solid var(--line)}
+.icon-button{width:38px;height:38px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;color:var(--ink)}
+.dashboard-hero{position:relative;min-height:152px;border-radius:24px;overflow:hidden;background-size:cover;background-position:center 43%;box-shadow:var(--shadow);display:grid;grid-template-columns:1fr .7fr auto;align-items:center;padding:28px 30px;gap:20px}
+.dashboard-hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(27,47,39,.88),rgba(27,47,39,.50) 58%,rgba(27,47,39,.24));z-index:0}.dashboard-hero>*{position:relative;z-index:1}
+.dashboard-hero h2{font-size:36px;letter-spacing:-1.2px;margin:0 0 7px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.34)}
+.dashboard-hero p{margin:0;color:rgba(255,255,255,.86);font-size:16px}
+.hero-quote{font-family:Georgia,serif;font-style:italic;text-align:center;color:#fff;font-size:18px;line-height:1.45;text-shadow:0 1px 8px rgba(0,0,0,.26)}
+.hero-actions{display:flex;gap:9px;align-self:start}
+.dash-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:14px 0}
+.dash-stat{display:grid;grid-template-columns:44px 1fr;gap:11px;align-items:center;padding:15px;border-radius:17px;background:#fff;border:1px solid #ebece8;box-shadow:0 5px 18px rgba(46,59,47,.05);cursor:pointer}
+.dash-stat-icon{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:21px}
+.dash-stat strong{display:block;font-size:23px;line-height:1}.dash-stat span{font-size:13px;color:var(--muted)}.dash-stat small{display:block;margin-top:4px;color:var(--good)}
+.tone-red{background:#fff0f2;color:#e34d68}.tone-orange{background:#fff4e8;color:#df8b36}.tone-green{background:#ecf8f1;color:#31936f}.tone-blue{background:#eef4ff;color:#5382dc}.tone-purple{background:#f3efff;color:#8063d8}
+.dashboard-primary{display:grid;grid-template-columns:1.25fr 1fr .72fr;gap:13px;align-items:stretch}
+.dashboard-secondary{display:grid;grid-template-columns:1.05fr 1fr .78fr;gap:13px;margin-top:13px}
+.dash-panel{background:#fff;border:1px solid #e8ebe6;border-radius:19px;box-shadow:0 7px 22px rgba(46,59,47,.05);overflow:hidden}
+.dash-panel-head{display:flex;align-items:center;justify-content:space-between;padding:15px 17px 12px;border-bottom:1px solid #eff1ee}.dash-panel-head h3{font-size:16px;margin:0}.dash-panel-head button{border:0;background:transparent;color:#596795;cursor:pointer;font-size:12px}
+.dash-panel-body{padding:4px 16px 12px}
+.dash-focus-row{display:grid;grid-template-columns:30px 22px 1fr auto auto;gap:9px;align-items:center;padding:10px 10px;margin:5px 0;border:1px solid transparent;border-radius:13px;cursor:pointer}.dash-focus-row input{accent-color:var(--accent)}.dash-focus-row.done .focus-copy{text-decoration:line-through;color:var(--muted)}
+.focus-emoji{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.7)}
+.focus-high{background:#fff3f4;border-color:#ffe0e4}.focus-course{background:#f5f1ff;border-color:#e7ddff}.focus-review{background:#eef7ff;border-color:#dceeff}.focus-research{background:#eef9f3;border-color:#d9f0e4}.focus-personal{background:#fff8ec;border-color:#f7e9ce}
+.soft-tag.high{background:#ffe1e5;color:#d94e61}.soft-tag.course{background:#e9e0ff;color:#7251c9}.soft-tag.review{background:#dceeff;color:#417cbd}.soft-tag.research{background:#d9f1e4;color:#328362}.soft-tag.personal{background:#f8e8c8;color:#9a681f}
+.dash-time{font-size:12px;color:#7b8090;white-space:nowrap}.soft-tag{padding:5px 9px;border-radius:9px;background:var(--soft);color:var(--accent);font-size:11px;font-weight:700}
+.dash-mail-row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #f0f1ef;cursor:pointer}.dash-mail-row:last-child{border-bottom:0}.sender-dot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--accent);font-weight:800}.mail-copy{min-width:0}.mail-copy b,.mail-copy span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mail-copy span{font-size:12px;color:var(--muted);margin-top:3px}.mail-priority{display:grid;justify-items:end;gap:4px}
+.priority-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 8px;border-radius:9px;font-size:10px;font-weight:800}.priority-high{background:#ffe3e7;color:#dc4c62}.priority-action{background:#e8efff;color:#5178cc}.priority-medium{background:#fff0d8;color:#a66c23}.priority-low{background:#edf1ef;color:#66736d}
+.important-mail-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 14px}.important-mail-card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:13px;cursor:pointer;box-shadow:0 4px 14px rgba(43,37,87,.04)}.important-mail-card:hover{border-color:var(--accent)}.important-mail-card b{display:block;margin:8px 0 4px}.important-mail-card p{font-size:12px;color:var(--muted);margin:0;line-height:1.4}
+.agenda-row{position:relative;padding:8px 0 8px 20px;border-left:2px solid #d9cfee;margin-left:6px}.agenda-row:before{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:var(--accent2);left:-5px;top:13px}.agenda-row b{font-size:12px;color:#6d6681;margin-right:7px}.agenda-row span{font-size:12px}
+.mini-course-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px}.mini-course{border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer}.course-color{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent2),var(--accent));margin-bottom:10px}.mini-course h4{font-size:13px;margin:0 0 3px}.mini-course p{font-size:11px;color:var(--muted);min-height:30px;margin:0 0 8px}.mini-course .progress{height:6px}
+.ranked-row{display:grid;grid-template-columns:24px 1fr auto;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f1ef;cursor:pointer}.rank{width:22px;height:22px;border-radius:7px;background:#f1f2f4;display:grid;place-items:center;font-size:11px}.ranked-row b{font-size:12px}.ranked-row span{font-size:11px;color:var(--muted)}
+.watch-row{display:grid;grid-template-columns:1fr 74px 64px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f1ef;cursor:pointer}.watch-row b{font-size:12px}.watch-spark{height:22px;display:flex;align-items:flex-end;gap:2px}.watch-spark i{display:block;width:4px;background:#50b882;border-radius:3px}.watch-value{text-align:right;font-size:11px}.watch-value em{display:block;color:var(--good);font-style:normal}
+.ai-dock{margin-top:13px;background:#fff;border:1px solid #e8ebe6;border-radius:18px;padding:10px 13px;display:grid;grid-template-columns:180px repeat(4,1fr) 1.25fr;gap:9px;align-items:center;box-shadow:0 7px 22px rgba(46,59,47,.05)}
+.ai-dock-title b{display:block}.ai-dock-title span{font-size:11px;color:var(--muted)}.quick-action{border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px;cursor:pointer;text-align:left;font-size:12px}.quick-action:hover{border-color:var(--accent);background:var(--soft)}.ai-dock-input{display:flex;gap:7px}.ai-dock-input input{min-width:0;flex:1;border:1px solid var(--line);border-radius:11px;padding:9px 10px}.ai-send{width:38px;border:0;border-radius:11px;background:var(--sidebar);color:#fff;cursor:pointer}
+@media(max-width:1050px){
+ .app{grid-template-columns:86px 1fr} .brand h1,.brand small,.nav .nav-label,.nav-count,.ai-nav-title,.ai-nav-section .ai-label,.sidebar-bottom span{display:none} .sidebar{padding:18px 10px} .nav button{grid-template-columns:1fr;padding:9px}.nav-icon{margin:auto}.ai-nav-section button{justify-content:center;padding:8px}.nav button{text-align:center} .stats,.module-grid{grid-template-columns:repeat(2,1fr)} .grid2,.mail-layout,.settings-grid{grid-template-columns:1fr} .mail-cats{display:flex;overflow:auto;gap:8px} .mail-cats .pill{width:auto;white-space:nowrap} .course-grid,.concept-grid{grid-template-columns:1fr} .resource-row{grid-template-columns:44px 1fr}.resource-actions{grid-column:1/-1;justify-content:flex-start}.settings-btn{text-align:center}.dashboard-primary,.dashboard-secondary{grid-template-columns:1fr 1fr}.dashboard-primary .dash-panel:first-child{grid-column:1/-1}.dash-stats{grid-template-columns:repeat(3,1fr)}.dashboard-hero{grid-template-columns:1fr auto}.hero-quote{display:none}.ai-dock{grid-template-columns:1fr 1fr 1fr}.ai-dock-input{grid-column:1/-1}.important-mail-summary{grid-template-columns:1fr}
+}
+@media(max-width:700px){.main{padding:14px}.top-date{display:none}.search{min-width:0;width:100%}.dashboard-hero{grid-template-columns:1fr;padding:22px}.dashboard-hero h2{font-size:28px}.hero-actions{position:absolute;right:14px;top:14px}.dash-stats,.dashboard-primary,.dashboard-secondary,.mini-course-grid{grid-template-columns:1fr}.dashboard-primary .dash-panel:first-child{grid-column:auto}.ai-dock{grid-template-columns:1fr}.dash-focus-row{grid-template-columns:30px 22px 1fr}.dash-time,.dash-focus-row .soft-tag{display:none}}
+@media(min-width:1051px) and (min-height:760px){
+ .main{padding:14px 20px 16px}.topbar{margin-bottom:9px;padding:6px 10px}.search{padding:9px 12px}.avatar,.icon-button{width:34px;height:34px}.dashboard-hero{min-height:102px;padding:15px 22px;border-radius:19px}.dashboard-hero h2{font-size:29px;margin-bottom:3px}.dashboard-hero p{font-size:13px}.hero-quote{font-size:15px}.hero-actions .btn{padding:8px 10px}.dash-stats{gap:8px;margin:8px 0}.dash-stat{grid-template-columns:35px 1fr;gap:8px;padding:9px 11px;border-radius:14px}.dash-stat-icon{width:35px;height:35px;font-size:17px}.dash-stat strong{font-size:19px}.dash-stat span{font-size:11px}.dash-stat small{font-size:10px;margin-top:2px}.dashboard-primary,.dashboard-secondary{gap:8px}.dashboard-secondary{margin-top:8px}.dash-panel{border-radius:15px}.dash-panel-head{padding:10px 13px 8px}.dash-panel-head h3{font-size:14px}.dash-panel-body{padding:3px 12px 8px}.dash-focus-row{grid-template-columns:26px 18px 1fr auto auto;padding:6px 8px;margin:3px 0;border-radius:10px}.focus-emoji{width:26px;height:26px;border-radius:8px;font-size:13px}.focus-copy b{font-size:12px}.soft-tag{padding:3px 7px;font-size:9px}.dash-time{font-size:10px}.dash-mail-row{grid-template-columns:28px 1fr auto;padding:6px 0}.sender-dot{width:28px;height:28px;font-size:11px}.mail-copy b{font-size:11px}.mail-copy span{font-size:10px;margin-top:1px}.priority-badge{padding:3px 6px;font-size:9px}.agenda-row{padding:5px 0 5px 16px}.agenda-row b,.agenda-row span{font-size:10px}.agenda-row .small{font-size:9px}.mini-course-grid{gap:7px;padding:8px}.mini-course{padding:8px;border-radius:11px}.course-color{width:28px;height:28px;border-radius:8px;margin-bottom:5px}.mini-course h4{font-size:11px}.mini-course p{font-size:9px;min-height:22px;margin-bottom:4px}.mini-course .small{font-size:9px}.ranked-row,.watch-row{padding:5px 0}.ranked-row b,.watch-row b{font-size:10px}.ranked-row span,.watch-value,.watch-row .small{font-size:9px}.rank{width:18px;height:18px;font-size:9px}.ai-dock{margin-top:8px;padding:7px 10px;border-radius:14px;gap:6px}.ai-dock-title b{font-size:12px}.ai-dock-title span{font-size:9px}.quick-action{padding:7px 8px;font-size:10px}.ai-dock-input input{padding:7px 8px;font-size:10px}.ai-send{height:31px}.dashboard-primary{min-height:214px}.dashboard-secondary{min-height:186px}
+}
+.panel-heading{display:inline-flex;align-items:center;gap:7px}.panel-title-icon{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;background:#eeeaff;color:#7060cf}.panel-title-icon.paper{background:#e8f6ef;color:#238361}.panel-title-icon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.lecture-files{display:grid;gap:7px;margin:10px 0}.lecture-file{display:grid;grid-template-columns:36px 1fr auto;gap:9px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:11px;background:#fbfbfd}.lecture-file-icon{width:34px;height:34px;border-radius:9px;background:#edeafd;color:#695ac5;display:grid;place-items:center;font-size:10px;font-weight:800}.lecture-file-actions{display:flex;gap:5px}.color-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}.color-swatch{width:27px;height:27px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #d8d8df;cursor:pointer}.color-swatch.active{box-shadow:0 0 0 2px var(--ink)}.paper-highlight{padding:10px 12px;border-radius:10px;margin:7px 0;display:grid;grid-template-columns:1fr auto;gap:9px;align-items:start}.paper-library-row{transition:.18s ease}.paper-library-row:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(33,35,49,.06)}
+.rescue-hero{padding:18px;border-radius:17px;background:linear-gradient(135deg,#f4f1ff,#eef8f2);margin:12px 0 16px}.rescue-hero h2{margin:0 0 7px;font-size:26px}.rescue-hero p{margin:0;color:#555b68}.rescue-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.rescue-card{position:relative;border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff;min-height:170px;display:flex;flex-direction:column;align-items:flex-start}.rescue-card h3{margin:11px 0 5px}.rescue-card p{margin:0 0 14px;color:var(--muted);font-size:12px;line-height:1.5}.rescue-card .btn{margin-top:auto}.rescue-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#ece9ff;color:#6656c6}.rescue-icon.photo{background:#e5f4ec;color:#2c8864}.rescue-icon.notes{background:#fff1dc;color:#bd7827}.rescue-icon.audio{background:#edf1f6;color:#718094}.rescue-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.coming-badge{position:absolute;right:12px;top:12px;padding:4px 8px;border-radius:99px;background:#eef0f4;color:#727986;font-size:10px;font-weight:800;text-transform:uppercase}.btn[disabled]{opacity:.55;cursor:not-allowed}
+@media(max-width:700px){.rescue-grid{grid-template-columns:1fr}.rescue-card{min-height:150px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">❧</div><div><h1>Jing Workspace</h1><small>Think · Learn · Work · Grow</small></div></div>
+    <nav class="nav">
+      <button class="active" data-page="dashboard"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5V21h13V9.5M9.5 21v-7h5v7"/></svg></span><span class="nav-label">Dashboard</span></button>
+      <button data-page="mail"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span class="nav-label">Mail</span><span class="nav-count" id="sideMailCount">1</span></button>
+      <button data-page="courses"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="m3 9 9-5 9 5-9 5-9-5Z"/><path d="M7 12v5c2.8 2.1 7.2 2.1 10 0v-5M21 9v6"/></svg></span><span class="nav-label">Courses</span></button>
+      <button data-page="assignments"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 3.5h8M8 9h8M8 13h5M8 17h4"/><path d="m15 16 1.5 1.5L20 14"/></svg></span><span class="nav-label">Assignments</span></button>
+      <button data-page="papers"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg></span><span class="nav-label">Papers</span></button>
+      <button data-page="markets"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M5 20V11M10 20V6M15 20v-8M20 20V3"/></svg></span><span class="nav-label">Markets</span></button>
+      <button data-page="calendar"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg></span><span class="nav-label">Calendar</span></button>
+    </nav>
+    <div class="ai-nav-section"><div class="ai-nav-title">AI Assistant</div><button id="askAI"><span class="ai-feature-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 4z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg></span><span class="ai-label">Ask a question</span></button><button onclick="openSummarize()"><span class="ai-feature-icon"><svg viewBox="0 0 24 24"><path d="m12 3 1.4 4.1L17.5 8.5l-4.1 1.4L12 14l-1.4-4.1-4.1-1.4 4.1-1.4L12 3Z"/><path d="m18.5 14 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/></svg></span><span class="ai-label">Summarize</span></button><button onclick="openDraftWrite()"><span class="ai-feature-icon"><svg viewBox="0 0 24 24"><path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20Z"/><path d="m13.8 6.7 3.5 3.5M4 20h6"/></svg></span><span class="ai-label">Draft & Write</span></button></div>
+    <div class="sidebar-bottom"><button class="settings-btn" id="settingsBtn">⚙ <span>Settings</span></button></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <input class="search" id="workspaceSearch" placeholder="Search anything… emails, files, notes, stocks, papers" aria-label="Search workspace" />
+      <div class="topbar-actions"><span class="top-date" id="topDate">Today</span><button class="icon-button" onclick="openTodaySummary()" title="Daily summary">◔</button><button class="icon-button" onclick="openSettings()" title="Appearance">☼</button><div class="avatar" id="profileAvatar" title="Edit profile" aria-label="Edit profile">J</div></div>
+    </div>
+
+    <section id="dashboard" class="page active">
+      <div class="hero dashboard-hero">
+        <div><h2>Good morning, <span id="welcomeName">Jing</span> 👋</h2><p id="welcomeSubtitle">A more organised you. One day at a time.</p></div>
+        <div class="hero-quote">“Small progress every day<br>adds up to big results.”</div>
+        <div class="hero-actions"><button class="btn ghost" id="dashboardLayoutToggle" onclick="toggleDashboardLayout()">Detailed</button><button class="btn ghost" onclick="openQuickCreate()">＋ New</button><button class="btn" onclick="openAssistant()">✦ Ask AI</button></div>
+      </div>
+
+      <div class="dash-stats">
+        <div class="dash-stat" onclick="go('mail')"><div class="dash-stat-icon tone-red">✉</div><div><strong id="mailActionCount">0</strong><span>Emails need action</span><small id="dashUnreadCount">Inbox snapshot</small></div></div>
+        <div class="dash-stat" onclick="go('assignments')"><div class="dash-stat-icon tone-orange">✓</div><div><strong id="dashDueCount">0</strong><span>Tasks due today</span><small id="dashTaskCount">0 active</small></div></div>
+        <div class="dash-stat" onclick="go('courses')"><div class="dash-stat-icon tone-purple">◆</div><div><strong id="dashLectureCount">0</strong><span>Lecture reviews</span><small>From saved course results</small></div></div>
+        <div class="dash-stat" onclick="go('papers')"><div class="dash-stat-icon tone-green">▤</div><div><strong id="dashboardPaperCount">0</strong><span>Papers to read</span><small id="dashPriorityPaperCount">0 priority</small></div></div>
+        <div class="dash-stat" onclick="go('calendar')"><div class="dash-stat-icon tone-blue">▣</div><div><strong id="dashCalendarCount">0</strong><span>Today’s events</span><small id="dashNextEvent">No event scheduled</small></div></div>
+      </div>
+
+      <div class="dashboard-primary">
+        <div class="dash-panel dashboard-focus-panel"><div class="dash-panel-head"><h3>🎯 Today’s Focus</h3><div class="dash-head-actions"><button onclick="refreshDashboardPriorities()">Refresh</button><button onclick="openAllPriorities()">View all →</button></div></div><div class="dash-panel-body" id="dashboardFocus"></div><div class="priority-summary-footer" id="dashboardPriorityFooter"></div></div>
+        <div class="dash-panel"><div class="dash-panel-head"><h3>✉ Important Emails</h3><button onclick="go('mail')">View all →</button></div><div class="dash-panel-body" id="dashboardEmails"></div></div>
+        <div class="dash-panel"><div class="dash-panel-head"><h3>▣ My Day</h3><button onclick="go('calendar')">Calendar →</button></div><div class="dash-panel-body" id="dashboardAgenda"></div><div style="padding:0 14px 13px"><button class="btn ghost" style="width:100%" onclick="openDashboardSchedule()">Plan focus time</button></div></div>
+      </div>
+
+      <div class="dashboard-priority-secondary">
+        <div class="dash-panel"><div class="dash-panel-head"><h3>Upcoming · 7 days</h3><button onclick="openAllPriorities()">View all →</button></div><div class="dash-panel-body" id="dashboardUpcoming"></div></div>
+        <div class="dash-panel"><div class="dash-panel-head"><h3>Completed Today</h3><span class="small" id="dashboardCompletedCount">0 completed</span></div><div class="dash-panel-body" id="dashboardCompleted"></div></div>
+      </div>
+
+      <div class="dashboard-secondary">
+        <div class="dash-panel"><div class="dash-panel-head"><h3 class="panel-heading"><span class="panel-title-icon"><svg viewBox="0 0 24 24"><path d="m3 9 9-5 9 5-9 5-9-5Z"/><path d="M7 12v5c2.8 2.1 7.2 2.1 10 0v-5"/></svg></span>My Courses</h3><button onclick="go('courses')">View all →</button></div><div class="mini-course-grid" id="dashboardCourses"></div></div>
+        <div class="dash-panel"><div class="dash-panel-head"><h3 class="panel-heading"><span class="panel-title-icon paper"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg></span>Recent Papers</h3><button onclick="go('papers')">View all →</button></div><div class="dash-panel-body" id="dashboardRecentPapers"></div></div>
+        <div class="dash-panel"><div class="dash-panel-head"><h3>▥ My Watchlist</h3><button onclick="go('markets')">View all →</button></div><div class="dash-panel-body" id="dashboardWatchlist"></div></div>
+      </div>
+
+      <div class="ai-dock"><div class="ai-dock-title"><b>✦ AI Assistant</b><span>Quick actions to save time</span></div><button class="quick-action" onclick="go('courses');openCourse('EDS6001','lectures')">▤ Summarize a PDF</button><button class="quick-action" onclick="openCourse('EDS6001','map')">◉ Explain a concept</button><button class="quick-action" onclick="gmailCatchUp()">✉ Summarize mail</button><button class="quick-action" onclick="openPaperCompare()">▥ Compare papers</button><div class="ai-dock-input"><input id="dashboardAsk" placeholder="Ask me anything…" onkeydown="if(event.key==='Enter')askFromDashboard()"><button class="ai-send" onclick="askFromDashboard()">➤</button></div></div>
+    </section>
+
+    <section id="mail" class="page">
+      <h2 class="page-title">Mail · Action Center</h2>
+      <div class="connection-bar"><span class="connection-dot"></span><div><b>Gmail not connected</b><div class="small" id="gmailAccount">Connect Gmail through your private backend</div></div><span class="badge good" id="lastGmailSync">Not connected</span><button class="btn ghost" style="margin-left:auto" onclick="showSyncInfo()">Sync details</button></div>
+      <div class="toolbar"><button class="btn" onclick="gmailCatchUp()">Catch me up ✦</button><span class="badge warn" id="gmailActionBadge">1 needs review</span></div>
+      <div class="important-mail-summary" id="importantMailSummary"></div>
+      <div class="mail-layout">
+        <div class="card mail-cats">
+          <button class="pill active">Action Required</button><button class="pill">Deadline</button><button class="pill">Academic</button><button class="pill">Admin</button><button class="pill">FYI</button>
+        </div>
+        <div class="card" id="gmailMailList"></div>
+        <div class="card mail-detail" id="mailDetail">
+          <p class="small">Loading the latest Gmail summary…</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="courses" class="page">
+      <h2 class="page-title">Courses</h2>
+      <div class="course-grid">
+        <div class="card course-card"><span class="badge">Core</span><h3>EDS6001 · Research Methods</h3><div class="small">Local course uploads supported</div><div class="progress"><span style="width:72%"></span></div><div class="small">3 concepts due · 1 assignment active</div><div class="imported">✓ Upload your own course files</div><button class="btn" onclick="openCourse('EDS6001')">Open course</button> <button class="btn ghost" onclick="openLectureRescue('EDS6001')">Rescue Today’s Lecture</button></div>
+        <div class="card course-card"><span class="badge good">AI</span><h3>EDS6019 · AI for Teaching & Learning</h3><div class="small">Latest: Connectivism</div><div class="progress"><span style="width:66%"></span></div><div class="small">2 concepts due · 1 essay active</div><button class="btn" onclick="openCourse('EDS6019')">Open course</button> <button class="btn ghost" onclick="openLectureRescue('EDS6019')">Rescue Today’s Lecture</button></div>
+        <div class="card course-card"><span class="badge warn">Elective</span><h3>CUI6078 · Curriculum Leadership</h3><div class="small">Wed 12:30–15:20 · N-3/F-02</div><div class="progress"><span style="width:48%"></span></div><div class="small">1 lecture unreviewed</div><button class="btn" onclick="openCourse('CUI6078')">Open course</button> <button class="btn ghost" onclick="openLectureRescue('CUI6078')">Rescue Today’s Lecture</button></div>
+        <div class="card course-card"><span class="badge good">ECE</span><h3>ECE6156 · Language & Literacy Development</h3><div class="small">Latest: Developmental perspectives</div><div class="progress"><span style="width:61%"></span></div><div class="small">4 readings linked</div><button class="btn" onclick="openCourse('ECE6156')">Open course</button> <button class="btn ghost" onclick="openLectureRescue('ECE6156')">Rescue Today’s Lecture</button></div>
+      </div>
+    </section>
+
+    <section id="assignments" class="page">
+      <h2 class="page-title">Assignments</h2>
+      <div class="toolbar"><button class="btn" onclick="openNewAssignment()">+ New assignment</button><select class="form-select" id="classActivityCourse" style="width:auto"><option>EDS6001</option><option>EDS6019</option><option>CUI6078</option><option>ECE6156</option></select><button class="btn ghost" onclick="document.getElementById('classActivityUpload').click()">+ Upload class activity</button><input id="classActivityUpload" type="file" hidden multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" onchange="uploadClassActivity(event)"><span class="small">Assignments and uploaded class activities feed the Dashboard automatically.</span></div>
+      <div class="grid3" id="customAssignmentList" style="margin-bottom:16px"></div>
+      <div class="grid3">
+        <div class="card"><span class="badge danger">Due in 6 days</span><h3>EDS6001 Research Proposal</h3><p class="small" id="assignmentProgress-eds6001">Progress 46%</p><div class="progress"><span id="assignmentBar-eds6001" style="width:46%"></span></div><button class="btn" onclick="openAssignment('eds6001')">Open workspace</button></div>
+        <div class="card"><span class="badge warn">Due in 16 days</span><h3>EDS6019 Final Essay</h3><p class="small" id="assignmentProgress-eds6019">Progress 22%</p><div class="progress"><span id="assignmentBar-eds6019" style="width:22%"></span></div><button class="btn ghost" onclick="openAssignment('eds6019')">Open workspace</button></div>
+        <div class="card"><span class="badge">Due later</span><h3>ECE6156 Assignment</h3><p class="small" id="assignmentProgress-ece6156">Progress 10%</p><div class="progress"><span id="assignmentBar-ece6156" style="width:10%"></span></div><button class="btn ghost" onclick="openAssignment('ece6156')">Open workspace</button></div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="section-title"><h3>This week</h3><span class="link">AI planned</span></div>
+        <div id="assignmentWeekList"></div>
+      </div>
+      <div class="card" style="margin-top:18px"><div class="section-title"><h3>Generated from Class Activities</h3><span class="badge good">AI planned</span></div><div class="generated-list" id="generatedAssignmentList"></div></div>
+    </section>
+
+    <section id="papers" class="page">
+      <h2 class="page-title">Papers · Research Reading</h2>
+      <div class="toolbar"><button class="btn" onclick="document.getElementById('paperFile').click()">+ Upload papers</button><input type="file" id="paperFile" hidden multiple accept=".pdf,.doc,.docx,.epub,.txt" onchange="importPaper(event)"><button class="btn ghost" onclick="openPaperCompare()">Compare papers</button><button class="btn ghost" onclick="openLiteratureMatrix()">Literature matrix</button></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="section-title"><h3>Reading Queue</h3><span class="badge" id="paperCountBadge">4 papers</span></div>
+          <div id="papersQueue"></div>
+        </div>
+        <div class="card">
+          <div class="section-title"><h3>Saved Evidence</h3><span class="link">27 items</span></div>
+          <div class="paper-row"><b>Claim</b><p>AI is commonly used for idea generation and summarization.</p><span class="badge">p.8</span> <span class="badge good">EDS6019 Essay</span></div>
+          <div class="paper-row"><b>Method</b><p>Mixed-method design combining survey and interviews.</p><span class="badge">p.12</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="markets" class="page">
+      <h2 class="page-title">Markets · Portfolio</h2>
+      <div class="stats">
+        <div class="card stat"><strong>+1.8%</strong><span>today</span></div>
+        <div class="card stat"><strong>5</strong><span>watchlist stocks</span></div>
+        <div class="card stat"><strong>1</strong><span>important update</span></div>
+        <div class="card stat"><strong>0</strong><span>urgent actions</span></div>
+      </div>
+      <div class="card">
+        <div class="stock-row"><b>9988.HK<br><span class="small">Alibaba</span></b><span>HK$87.60</span><span class="pos">+2.31%</span><div class="spark"><span style="height:9px"></span><span style="height:14px"></span><span style="height:12px"></span><span style="height:18px"></span><span style="height:16px"></span><span style="height:22px"></span><span style="height:26px"></span><span style="height:24px"></span><span style="height:31px"></span><span style="height:29px"></span></div><button class="btn ghost" onclick="openStock('9988.HK')">Details</button></div>
+        <div class="stock-row"><b>0700.HK<br><span class="small">Tencent</span></b><span>HK$412.40</span><span class="neg">-0.42%</span><div class="spark"><span style="height:28px"></span><span style="height:26px"></span><span style="height:25px"></span><span style="height:21px"></span><span style="height:23px"></span><span style="height:18px"></span><span style="height:19px"></span><span style="height:17px"></span><span style="height:16px"></span><span style="height:14px"></span></div><button class="btn ghost" onclick="openStock('0700.HK')">Details</button></div>
+        <div class="stock-row"><b>AAPL<br><span class="small">Apple</span></b><span>US$—</span><span class="small">Demo</span><div class="spark"><span style="height:12px"></span><span style="height:13px"></span><span style="height:16px"></span><span style="height:17px"></span><span style="height:15px"></span><span style="height:18px"></span><span style="height:21px"></span><span style="height:22px"></span><span style="height:24px"></span><span style="height:25px"></span></div><button class="btn ghost" onclick="openStock('AAPL')">Details</button></div>
+      </div>
+    </section>
+
+    <section id="calendar" class="page">
+      <h2 class="page-title">Calendar</h2>
+      <div class="toolbar"><button class="btn" onclick="openAddEvent()">+ Add event</button><button class="btn ghost" onclick="openStudyPlan()">Plan my study week ✦</button></div>
+      <div class="course-note"><b>Semester 1, 2026–27 timetable connected</b><br><span class="small">EDS6001 · Monday 14:30 | EDS6019 · Tuesday 09:30 | ECE6156 · Tuesday 18:30 | CUI6078 · Wednesday 12:30</span></div>
+      <div class="card">
+        <div class="calendar" id="calendarGrid"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="modal"><div class="modal-box"><button class="close" onclick="closeModal()">✕</button><div id="modalContent"></div></div></div>
+<div class="status-toast" id="statusToast" role="status"></div>
+
+<script>
+const pages=[...document.querySelectorAll('.page')];
+const nav=[...document.querySelectorAll('.nav button')];
+function go(id){
+  pages.forEach(p=>p.classList.toggle('active',p.id===id));
+  nav.forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+nav.forEach(b=>b.onclick=()=>go(b.dataset.page));
+
+const workspaceThemes={
+  forest:{label:'Forest',bg:'#f5f6f3',accent:'#7f68d7',accent2:'#a88be3',sidebar:'#465b49'},
+  lavender:{label:'Lavender',bg:'#f5f4fb',accent:'#6f63d9',accent2:'#8e86ef',sidebar:'#202231'},
+  ocean:{label:'Ocean',bg:'#f1f7fb',accent:'#2778a7',accent2:'#59a8d3',sidebar:'#193747'},
+  mint:{label:'Mint',bg:'#f2f8f6',accent:'#287f69',accent2:'#58aa91',sidebar:'#203a34'},
+  rose:{label:'Rose',bg:'#fbf3f6',accent:'#a65376',accent2:'#d17b9a',sidebar:'#422a35'}
+};
+const defaultPreferences={name:'Jing',headline:'A more organised you. One day at a time.',theme:'forest',...workspaceThemes.forest,avatar:''};
+function readPreferences(){
+  try{return {...defaultPreferences,...JSON.parse(localStorage.getItem('jingWorkspacePreferencesV1')||'{}')}}catch(e){return {...defaultPreferences}}
+}
+let profilePrefs=readPreferences();
+function lighten(hex,amount=.22){
+  if(!/^#[0-9a-f]{6}$/i.test(hex))return hex;
+  const n=parseInt(hex.slice(1),16),mix=c=>Math.round(c+(255-c)*amount);
+  return '#'+[mix(n>>16),mix((n>>8)&255),mix(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+function applyPreferences(){
+  const root=document.documentElement;
+  root.style.setProperty('--bg',profilePrefs.bg);
+  root.style.setProperty('--accent',profilePrefs.accent);
+  root.style.setProperty('--accent2',profilePrefs.accent2||lighten(profilePrefs.accent));
+  root.style.setProperty('--sidebar',profilePrefs.sidebar||workspaceThemes.lavender.sidebar);
+  document.getElementById('welcomeName').textContent=profilePrefs.name||'Jing';
+  document.getElementById('welcomeSubtitle').textContent=profilePrefs.headline||defaultPreferences.headline;
+  const avatar=document.getElementById('profileAvatar');
+  avatar.textContent=(profilePrefs.name||'J').trim().charAt(0).toUpperCase();
+  avatar.style.backgroundImage=profilePrefs.avatar?`url("${profilePrefs.avatar}")`:'';
+  avatar.classList.toggle('has-image',Boolean(profilePrefs.avatar));
+}
+function safeAttr(value){return String(value||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function openSettings(){
+  openModal(`<h2>Personalize Workspace</h2><p class="small">Your profile and appearance are saved only in this browser.</p>
+  <div class="settings-grid">
+    <div class="setting-section"><h3>Personal profile</h3>
+      <div class="profile-preview"><div class="profile-preview-avatar" id="settingsAvatarPreview"></div><div><b id="settingsNamePreview"></b><div class="small">Jing Workspace profile</div></div></div>
+      <div class="field"><label for="settingsName">Display name</label><input id="settingsName" type="text" maxlength="30" value="${safeAttr(profilePrefs.name)}" oninput="updateSettingsPreview()"></div>
+      <div class="field"><label for="settingsHeadline">Dashboard message</label><input id="settingsHeadline" type="text" maxlength="100" value="${safeAttr(profilePrefs.headline)}"></div>
+      <div class="field"><label>Profile photo</label><div class="toolbar"><button class="btn ghost" onclick="document.getElementById('avatarFile').click()">Choose photo</button><button class="btn ghost" onclick="clearAvatar()">Remove</button><input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="pickAvatar(event)"></div><span class="small">JPG, PNG or WebP · up to 1.5 MB</span></div>
+    </div>
+    <div class="setting-section"><h3>Appearance</h3><span class="small">Choose a theme or fine-tune the colors.</span>
+      <div class="theme-options">${Object.entries(workspaceThemes).map(([key,t])=>`<button class="theme-choice ${profilePrefs.theme===key?'active':''}" data-theme="${key}" onclick="chooseTheme('${key}')"><div class="theme-swatch" style="background:linear-gradient(135deg,${t.bg} 0 48%,${t.accent} 48% 72%,${t.sidebar} 72%)"></div><b>${t.label}</b></button>`).join('')}</div>
+      <div class="color-row"><div class="field"><label>Background</label><div class="color-input"><input id="backgroundColor" type="color" value="${safeAttr(profilePrefs.bg)}" oninput="previewColors()"><span id="backgroundColorValue">${safeAttr(profilePrefs.bg)}</span></div></div><div class="field"><label>Accent</label><div class="color-input"><input id="accentColor" type="color" value="${safeAttr(profilePrefs.accent)}" oninput="previewColors()"><span id="accentColorValue">${safeAttr(profilePrefs.accent)}</span></div></div></div>
+    </div>
+  </div>
+  <div class="setting-section" style="margin-top:16px"><h3>Course analysis connection</h3>
+    <p class="small">Local document reading is active. Advanced cloud AI, image OCR and audio transcription require a secure backend; API keys are never stored in this HTML file.</p>
+    <button class="btn ghost" onclick="openCourseAnalysisSettings()">View connection status</button> <button class="btn ghost" onclick="openWorkspaceConnection()">AI & Gmail settings</button>
+  </div>
+  <div class="settings-actions"><button class="btn ghost" onclick="resetPreferences()">Reset</button><button class="btn" onclick="saveSettings()">Save changes</button></div>`);
+  updateSettingsPreview();
+}
+function openCourseAnalysisSettings(){
+  openModal(`<button class="btn ghost" onclick="openSettings()">← Back to Settings</button><h2>Course Analysis Connection</h2>
+  <div class="course-note"><b>Privacy and security</b><br><span class="small">This page never asks for, stores or embeds an API key. A future AI connection must send files only to a backend you control, with credentials kept on that server.</span></div>
+  <div class="paper-row"><div><b>Local PDF reader</b><div class="small">Reads selectable text inside PDF files in this browser.</div></div><span class="badge good">Ready</span></div>
+  <div class="paper-row"><div><b>Local Office reader</b><div class="small">Reads text inside PPTX and DOCX files in this browser.</div></div><span class="badge good">Ready</span></div>
+  <div class="paper-row"><div><b>Local source analysis</b><div class="small">Creates extractive summaries, concepts, maps and quizzes from real text. This is deterministic local analysis, not a cloud language model.</div></div><span class="badge good">Ready</span></div>
+  <div class="paper-row"><div><b>Advanced AI interpretation</b><div class="small">Requires a secure backend endpoint and provider authorization.</div></div><span class="badge warn">Not connected</span></div>
+  <div class="paper-row"><div><b>Image OCR and audio transcription</b><div class="small">Requires an OCR or speech service through the secure backend.</div></div><span class="badge warn">Not connected</span></div>`)
+}
+function updateSettingsPreview(){
+  const name=document.getElementById('settingsName')?.value.trim()||'Jing';
+  const preview=document.getElementById('settingsNamePreview'); if(preview)preview.textContent=name;
+  const avatar=document.getElementById('settingsAvatarPreview'); if(!avatar)return;
+  avatar.textContent=profilePrefs.avatar?'':name.charAt(0).toUpperCase();
+  avatar.style.backgroundImage=profilePrefs.avatar?`url("${profilePrefs.avatar}")`:'';
+}
+function chooseTheme(key){
+  const theme=workspaceThemes[key]; if(!theme)return;
+  profilePrefs={...profilePrefs,...theme,theme:key}; applyPreferences();
+  const bg=document.getElementById('backgroundColor'),accent=document.getElementById('accentColor');
+  if(bg)bg.value=theme.bg;if(accent)accent.value=theme.accent;
+  document.querySelectorAll('.theme-choice').forEach(b=>b.classList.toggle('active',b.dataset.theme===key));
+  document.getElementById('backgroundColorValue').textContent=theme.bg;
+  document.getElementById('accentColorValue').textContent=theme.accent;
+}
+function previewColors(){
+  const bg=document.getElementById('backgroundColor').value,accent=document.getElementById('accentColor').value;
+  profilePrefs={...profilePrefs,theme:'custom',bg,accent,accent2:lighten(accent)};applyPreferences();
+  document.getElementById('backgroundColorValue').textContent=bg;
+  document.getElementById('accentColorValue').textContent=accent;
+  document.querySelectorAll('.theme-choice').forEach(b=>b.classList.remove('active'));
+}
+function pickAvatar(event){
+  const file=event.target.files[0];if(!file)return;
+  if(file.size>1572864){alert('Please choose an image smaller than 1.5 MB.');event.target.value='';return}
+  const reader=new FileReader();reader.onload=()=>{profilePrefs.avatar=reader.result;updateSettingsPreview();applyPreferences()};reader.readAsDataURL(file);
+}
+function clearAvatar(){profilePrefs.avatar='';updateSettingsPreview();applyPreferences()}
+function saveSettings(){
+  profilePrefs.name=document.getElementById('settingsName').value.trim()||'Jing';
+  profilePrefs.headline=document.getElementById('settingsHeadline').value.trim()||defaultPreferences.headline;
+  try{localStorage.setItem('jingWorkspacePreferencesV1',JSON.stringify(profilePrefs))}catch(e){alert('The profile photo may be too large to save. Try a smaller image.');return}
+  applyPreferences();closeModal();
+}
+function resetPreferences(){
+  profilePrefs={...defaultPreferences};localStorage.removeItem('jingWorkspacePreferencesV1');applyPreferences();openSettings();
+}
+document.getElementById('settingsBtn').onclick=openSettings;
+document.getElementById('profileAvatar').onclick=openSettings;
+applyPreferences();
+
+/* DAILY_GMAIL_SNAPSHOT_START */
+const gmailSnapshot={account:"Not connected",lastSync:"Not connected",inboxUnread:0,emails:[]};
+/* DAILY_GMAIL_SNAPSHOT_END */
+const mails=gmailSnapshot.emails;
+function escapeText(value){return String(value||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+function gmailUrl(value){return /^https:\/\/mail\.google\.com\//.test(value||'')?value:'#'}
+function tagClass(tag){return tag==='Action required'?'danger':tag==='Admin'?'warn':tag==='FYI'?'good':''}
+function priorityClass(priority){return 'priority-'+String(priority||'Low').toLowerCase()}
+function renderGmailSnapshot(){
+  document.getElementById('gmailAccount').textContent=gmailSnapshot.account+' · '+gmailSnapshot.inboxUnread+' unread in inbox';
+  document.getElementById('lastGmailSync').textContent=gmailSnapshot.lastSync;
+  const actionCount=mails.filter(m=>m.tag==='Action required').length;
+  document.getElementById('gmailActionBadge').textContent=actionCount+' needs review';
+  document.getElementById('mailActionCount').textContent=actionCount;
+  document.getElementById('sideMailCount').textContent=actionCount;
+  const list=document.getElementById('gmailMailList');
+  list.innerHTML=mails.map((m,i)=>`<div class="mail-row ${i===0?'active':''}" onclick="showMail(this,${i})"><div class="mail-row-top"><b>${m.unread?'<span class="unread-mark"></span>':''}${escapeText(m.sender)}</b><span><span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span> <span class="mail-time">${escapeText(m.received)}</span></span></div><div>${escapeText(m.title)}</div><div class="small">AI: ${escapeText(m.summary)}</div></div>`).join('');
+  document.getElementById('importantMailSummary').innerHTML=mails.slice(0,3).map((m,i)=>`<div class="important-mail-card" onclick="selectImportantMail(${i})"><span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span><b>${escapeText(m.title)}</b><p>${escapeText(m.sender)} · ${escapeText(m.summary)}</p></div>`).join('');
+  if(mails.length)showMail(list.querySelector('.mail-row'),0);else document.getElementById('mailDetail').innerHTML='<p class="small">No mailbox is connected. Open AI & Gmail settings to configure your backend.</p>';
+}
+function selectImportantMail(i){go('mail');renderGmailSnapshot();const el=document.querySelectorAll('#gmailMailList .mail-row')[i];if(el)showMail(el,i)}
+function showMail(el,i){
+  document.querySelectorAll('.mail-row').forEach(x=>x.classList.remove('active')); el.classList.add('active');
+  const m=mails[i];
+  document.getElementById('mailDetail').innerHTML=`<span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span> <span class="badge ${tagClass(m.tag)}">${escapeText(m.tag)}</span><h3>${escapeText(m.title)}</h3><div class="ai-summary"><b>What this email means</b><p>${escapeText(m.summary)}</p><b>Suggested action</b><p>${escapeText(m.action)}</p></div><p class="small">From: ${escapeText(m.sender)} · ${escapeText(m.received)}</p><div class="toolbar"><a class="btn" style="text-decoration:none" href="${gmailUrl(m.url)}" target="_blank" rel="noopener">Open in Gmail</a><button class="btn ghost" onclick="createMailTask(${i})">Create task</button></div>`;
+}
+function gmailCatchUp(){
+  const actions=mails.filter(m=>m.tag==='Action required');
+  openModal(`<h2>Gmail Catch-up ✦</h2><div class="ai-summary"><b>${mails.length} recent conversations</b><p>${actions.length?escapeText(actions[0].title)+' should be reviewed first. '+escapeText(actions[0].action):'No email currently needs immediate action.'}</p></div><p class="small">This summary intentionally excludes full message bodies and verification codes.</p><button class="btn" onclick="closeModal();go('mail')">Review mail</button>`);
+}
+function showSyncInfo(){
+  openModal(`<h2>Gmail sync</h2><div class="connection-bar"><span class="connection-dot"></span><div><b>${escapeText(gmailSnapshot.account)}</b><div class="small">Connection details are available in AI & Gmail settings</div></div></div><p>The daily sync reads recent inbox metadata, identifies messages that may need attention, and refreshes this Mail page. It does not send, archive, label or delete messages.</p><div class="paper-row"><b>Last sync</b><div class="small">${escapeText(gmailSnapshot.lastSync)}</div></div><div class="paper-row"><b>Next scheduled refresh</b><div class="small">Refresh while the page is open after connecting Gmail</div></div>`);
+}
+renderGmailSnapshot();
+function openModal(html){document.getElementById('modalContent').innerHTML=html;document.getElementById('modal').classList.add('open')}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+function readWorkspaceState(){
+  const defaults={
+    courseNotes:{},lectureNotes:{},courseUploads:{},courseReading:{},readingUploads:{},quizScores:{},
+    assignments:{
+      eds6001:{tasks:[true,true,false,false,false],notes:''},
+      eds6019:{tasks:[true,false,false,false],notes:''},
+      ece6156:{tasks:[false,false,false,false],notes:''}
+    },
+    generatedAssignments:[],
+    miscTasks:[],dashboardFocus:[false,false,false,false,false],
+    papers:[
+      {id:'p1',title:'Students’ use of generative AI in higher education',theme:'AI in Education',course:'EDS6019',status:'Reading',notes:''},
+      {id:'p2',title:'Mixed methods research design in education',theme:'Methods',course:'EDS6001',status:'Queued',notes:''},
+      {id:'p3',title:'Connectivism and AI-mediated learning',theme:'Theory',course:'EDS6019',status:'Priority',notes:''},
+      {id:'p4',title:'Narrative inquiry in teacher education',theme:'Qualitative Design',course:'EDS6001',status:'Queued',notes:''}
+    ],
+    events:[],
+    stocks:{},chat:[]
+  };
+  try{
+    const saved=JSON.parse(localStorage.getItem('jingWorkspaceStateV1')||'{}');
+    return {...defaults,...saved,assignments:{...defaults.assignments,...(saved.assignments||{})},courseNotes:{...defaults.courseNotes,...(saved.courseNotes||{})},lectureNotes:{...defaults.lectureNotes,...(saved.lectureNotes||{})},courseUploads:{...defaults.courseUploads,...(saved.courseUploads||{})},courseReading:{...defaults.courseReading,...(saved.courseReading||{})},readingUploads:{...defaults.readingUploads,...(saved.readingUploads||{})},generatedAssignments:saved.generatedAssignments||defaults.generatedAssignments,quizScores:{...defaults.quizScores,...(saved.quizScores||{})},stocks:{...defaults.stocks,...(saved.stocks||{})}};
+  }catch(e){return defaults}
+}
+let workspaceState=readWorkspaceState();
+delete workspaceState.moodle;
+Object.keys(workspaceState.courseUploads||{}).forEach(code=>{const kept=[],removed=[];(workspaceState.courseUploads[code]||[]).forEach(file=>(file.source==='Moodle'||String(file.id||'').startsWith('moodle-')?removed:kept).push(file));workspaceState.courseUploads[code]=kept;removed.forEach(file=>{if(file.id)deleteWorkspaceFile(file.id)})});
+sessionStorage.removeItem('jingMoodleToken');
+const classSchedule=[
+  {id:'class-eds6001',date:'2026-09-21',time:'14:30',end:'17:20',title:'EDS6001 · Research Methods',module:'Course',location:'XC-G04-01',recurring:true},
+  {id:'class-eds6019',date:'2026-09-22',time:'09:30',end:'12:20',title:'EDS6019 · AI for Teaching & Learning',module:'Course',location:'B2-LP-20',recurring:true},
+  {id:'class-ece6156',date:'2026-09-22',time:'18:30',end:'21:20',title:'ECE6156 · Language & Literacy',module:'Course',location:'B2-G/F-05',recurring:true},
+  {id:'class-cui6078',date:'2026-09-23',time:'12:30',end:'15:20',title:'CUI6078 · Curriculum Leadership',module:'Course',location:'N-3/F-02',recurring:true}
+];
+workspaceState.events=(workspaceState.events||[]).filter(e=>!(e.id==='e1'&&e.title==='EDS6001'));
+classSchedule.forEach(item=>{const i=workspaceState.events.findIndex(e=>e.id===item.id);if(i>=0)workspaceState.events[i]={...workspaceState.events[i],...item};else workspaceState.events.push({...item})});
+localStorage.setItem('jingWorkspaceStateV1',JSON.stringify(workspaceState));
+function saveWorkspaceState(){localStorage.setItem('jingWorkspaceStateV1',JSON.stringify(workspaceState));if(typeof renderDashboard==='function')renderDashboard()}
+function toast(message){const t=document.getElementById('statusToast');t.textContent=message;t.classList.add('show');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.classList.remove('show'),1800)}
+
+const courseCatalog={
+  EDS6001:{title:'Research Methods for Interdisciplinary Studies',focus:'Connect a research problem to literature, questions, design, participants and data collection.',trail:['Qualitative Research','Literature Review','Gap & RQ','Research Design','Data Collection'],concepts:[['Purposive Sampling','Select information-rich participants who can answer the research question.'],['Research Gap','The unresolved issue your study will address.'],['Narrative Inquiry','Study how people make meaning through stories across time and context.'],['Case Study','Investigate a bounded case deeply using multiple sources of evidence.']],lectures:['Session 1 · Qualitative research foundations','Session 2 · Literature review, gap and research questions','Session 3 · Narrative Inquiry and Case Study'],quiz:{q:'Which session connects literature review to a research gap and research questions?',options:['Session 1','Session 2','Session 3'],answer:1},assignment:'eds6001',readings:['Creswell & Creswell · Research Design','A narrative inquiry example using ChatGPT','Mixed methods research design in education']},
+  EDS6019:{title:'AI for Teaching & Learning',focus:'Understand learning theories and evaluate how AI changes teaching, participation and knowledge building.',trail:['Learning Theory','Connectivism','AI-mediated Learning','Teaching Design','Evaluation'],concepts:[['Connectivism','Learning develops through networks of people, information and digital tools.'],['AI Literacy','The knowledge and judgment needed to use AI critically and responsibly.'],['TPACK','A framework connecting technology, pedagogy and content knowledge.'],['Academic Integrity','Responsible use, attribution and verification of AI-supported work.']],lectures:['Learning theories for digital education','Connectivism and networked learning','Generative AI in teaching practice'],quiz:{q:'Which concept views learning as forming and navigating networks?',options:['Behaviorism','Connectivism','Essentialism'],answer:1},assignment:'eds6019',readings:['Connectivism: A Learning Theory for the Digital Age','Generative AI and student learning behavior','AI literacy in higher education']},
+  CUI6078:{title:'Curriculum Leadership',focus:'Understand how curriculum leaders shape vision, implementation, teacher collaboration and school improvement.',trail:['Curriculum Vision','Leadership','Implementation','Teacher Learning','Evaluation'],concepts:[['Curriculum Leadership','Guiding curriculum decisions, implementation and improvement across a learning community.'],['Shared Vision','A collectively understood direction for curriculum and student learning.'],['Teacher Collaboration','Professional work that turns curriculum goals into classroom practice.'],['Evaluation','Using evidence to judge implementation and improve the curriculum.']],lectures:['Course orientation · Curriculum leadership','Leadership and curriculum change','Teacher collaboration and implementation'],quiz:{q:'Which practice helps turn curriculum goals into shared classroom action?',options:['Teacher collaboration','Individual isolation','Administrative filing'],answer:0},assignment:null,readings:['Curriculum leadership foundations','Leading curriculum change','Teacher professional learning']},
+  ECE6156:{title:'Language & Literacy Development in Children',focus:'Use evidence to understand language, literacy, identity and children’s agency.',trail:['Language','Literacy','Identity','Agency','Evidence'],concepts:[['Language','Sounds, words, grammar and interaction in multilingual contexts.'],['Literacy','Making and taking meaning from many kinds of texts, not decoding alone.'],['Identity','How children are seen and see themselves as speakers and readers.'],['Agency','A child’s capacity to act on the world through language.']],lectures:['Orientation · Language, literacy, identity and agency','Developmental perspectives','Evaluating evidence in language education'],quiz:{q:'Which concept describes a child’s capacity to act on the world with language?',options:['Identity','Agency','Decoding'],answer:1},assignment:'ece6156',readings:['Language, literacy, identity and agency','Sociocultural perspectives on literacy','Evidence evaluation in early childhood']}
+};
+const assignmentCatalog={
+  eds6001:{course:'EDS6001',title:'Research Proposal',due:'Due in 6 days',brief:'Build a coherent proposal where the research problem, literature, research questions, participants, sampling, design and data collection align.',tasks:['Confirm topic','Finalize research questions','Synthesize literature','Draft methodology','APA and ethics check'],lectures:['Session 2 · Literature Review','Session 3 · Narrative Inquiry & Case Study','Mixed Methods planning']},
+  eds6019:{course:'EDS6019',title:'Final Essay',due:'Due in 16 days',brief:'Develop a clear argument about AI-supported learning, connect it to theory, and support each claim with research evidence.',tasks:['Choose argument','Create literature themes','Draft critical analysis','Edit references'],lectures:['Connectivism','AI literacy','AI-mediated learning']},
+  ece6156:{course:'ECE6156',title:'Language & Literacy Assignment',due:'Due later',brief:'Evaluate a language or literacy practice using course concepts and credible research evidence.',tasks:['Choose practice','Identify course concepts','Evaluate evidence','Draft final response'],lectures:['Language & Literacy','Identity & Agency','Research literacy']}
+};
+
+function courseResources(code){return "";}
+function builtInLectureFiles(code,index){return "";}
+function lectureFiles(code,index){const all=workspaceState.courseUploads[code]||[];return all.map((f,i)=>({f,i})).filter(x=>Number(x.f.lectureIndex)===index).map(({f,i})=>`<div class="lecture-file"><div class="lecture-file-icon">${escapeText((f.name.split('.').pop()||'FILE').slice(0,4).toUpperCase())}</div><div><b>${escapeText(f.name)}</b><div class="small">${escapeText(f.size||'')} · ${escapeText(f.source||'Uploaded lecture file')}${f.cached?' · available offline':''}</div></div><div class="lecture-file-actions"><button class="btn ghost" onclick="openCourseStoredFile('${code}',${i})">Open</button><button class="btn ghost danger-text" onclick="removeCourseFile('${code}',${i})">Delete</button></div></div>`).join('')}
+function openLectureRescue(code,selectedIndex=0){const c=courseCatalog[code];if(!c)return;const index=Math.max(0,Math.min(Number(selectedIndex)||0,c.lectures.length-1));openModal(`<button class="btn ghost" onclick="openCourse('${code}','lectures')">← Back to Lecture Notes</button><div class="rescue-hero"><h2>Rescue a Lecture</h2><p><b>Upload anything you have from today’s class.</b></p></div><div class="field"><label>Save everything to</label><select class="form-select" id="rescueLectureSelect">${c.lectures.map((name,i)=>`<option value="${i}" ${i===index?'selected':''}>${escapeText(name)}</option>`).join('')}</select></div><div class="rescue-grid"><div class="rescue-card"><div class="rescue-icon"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg></div><h3>PPT / PDF</h3><p>Add the lecturer’s slides or a PDF handout directly beneath this Lecture Note.</p><button class="btn" onclick="document.getElementById('rescueSlides-${code}').click()">Upload Slides</button><input id="rescueSlides-${code}" type="file" hidden multiple accept=".pdf,.ppt,.pptx" onchange="handleRescueUpload('${code}',event,'slides')"></div><div class="rescue-card"><div class="rescue-icon photo"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m4 18 5-5 3 3 2-2 6 5"/></svg></div><h3>Photo</h3><p>Photograph the whiteboard, projected slides or your handwritten classroom notes.</p><button class="btn" onclick="document.getElementById('rescuePhotos-${code}').click()">Upload Photos</button><input id="rescuePhotos-${code}" type="file" hidden multiple accept="image/*" capture="environment" onchange="handleRescueUpload('${code}',event,'photo')"></div><div class="rescue-card"><div class="rescue-icon notes"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><h3>Notes</h3><p>Paste a transcript, rough notes, key terms, lecturer examples or your questions.</p><button class="btn" onclick="openRescueNotes('${code}')">Paste Notes</button></div><div class="rescue-card"><span class="coming-badge">Coming soon</span><div class="rescue-icon audio"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></div><h3>Audio</h3><p>Lecture recording upload and transcription will be added after the MVP.</p><button class="btn ghost" disabled>Upload Lecture Recording</button></div></div>`)}
+function selectedRescueLecture(){const select=document.getElementById('rescueLectureSelect');return select?Number(select.value)||0:0}
+async function handleRescueUpload(code,event,kind){const index=selectedRescueLecture();await addCourseFiles(code,event,kind,index)}
+function openRescueNotes(code){const index=selectedRescueLecture(),c=courseCatalog[code],notes=workspaceState.lectureNotes[code]||[];openModal(`<button class="btn ghost" onclick="openLectureRescue('${code}',${index})">← Back to Rescue a Lecture</button><div class="rescue-hero"><h2>Paste Notes</h2><p><b>${escapeText(c.lectures[index])}</b></p></div><textarea id="rescueNotesText" style="min-height:240px" placeholder="Paste today’s lecture notes, transcript, key ideas and questions…">${escapeText(notes[index]||'')}</textarea><div class="save-note">Notes are stored locally in this browser.</div><button class="btn" onclick="saveRescueNotes('${code}',${index})">Save to Lecture Note</button>`)}
+function saveRescueNotes(code,index){const value=document.getElementById('rescueNotesText').value.trim();const notes=workspaceState.lectureNotes[code]||[];notes[index]=value;workspaceState.lectureNotes[code]=notes;saveWorkspaceState();openCourse(code,'lectures');toast('Notes saved to the lecture')}
+function openCourse(code,tab='overview'){
+  const c=courseCatalog[code];if(!c)return;
+  const tabs=[['overview','Overview'],['lectures','Lecture Notes'],['map','Knowledge Map'],['quiz','Quiz'],['assignments','Assignments'],['readings','Readings']];
+  openModal(`<h2>${code} · ${escapeText(c.title)}</h2><div class="tabs">${tabs.map(t=>`<button class="tab ${tab===t[0]?'active':''}" onclick="openCourse('${code}','${t[0]}')">${t[1]}</button>`).join('')}</div>${courseTab(code,tab)}`);
+}
+function courseTab(code,tab){
+  const c=courseCatalog[code];
+  if(tab==='overview')return `<div class="course-note"><b>This course’s current focus</b><br>${escapeText(c.focus)}</div><h3>Learning path</h3><div class="mindmap">${c.trail.map((x,i)=>`${i?'<span class="arrow">→</span>':''}<span class="node">${escapeText(x)}</span>`).join('')}</div><div class="grid2"><div><h3>Key concepts</h3>${c.concepts.slice(0,3).map((x,i)=>`<div class="focus-item clickable" onclick="openConcept('${code}',${i})"><div class="num">${i+1}</div><div><b>${escapeText(x[0])}</b><div class="small">Open explanation</div></div></div>`).join('')}</div><div><h3>My course notes</h3><textarea oninput="saveCourseNote('${code}',this.value)" placeholder="Write your own understanding, questions and examples…">${escapeText(workspaceState.courseNotes[code]||'')}</textarea><div class="save-note">Saved locally as you type</div></div></div>`;
+  if(tab==='lectures'){
+    const uploads=workspaceState.courseUploads[code]||[];
+    const notes=workspaceState.lectureNotes[code]||[];
+    const unassigned=uploads.map((f,i)=>({f,i})).filter(x=>x.f.lectureIndex===undefined||x.f.lectureIndex===null);
+    return `<div class="toolbar"><button class="btn" onclick="openLectureRescue('${code}')">Rescue Today’s Lecture</button><span class="small">Quickly save slides, photos or pasted notes from class.</span></div><div class="course-note"><b>Lecture files live with their notes</b><br><span class="small">Upload a PDF, slides, classroom photo or text note directly to the matching lecture below.</span></div><h3>Class Notes</h3>${c.lectures.map((x,i)=>`<div class="lecture-note-card"><div class="lecture-note-head"><div><b>${escapeText(x)}</b><div class="small">Notes and files are grouped by lecture.</div></div><div><button class="btn ghost" onclick="openLectureRescue('${code}',${i})">+ Add class material</button> <button class="btn ghost" onclick="teachLecture('${code}',${i})">Teach Me</button></div></div><textarea oninput="saveLectureNote('${code}',${i},this.value)" placeholder="Key ideas, lecturer examples, questions and follow-up…">${escapeText(notes[i]||'')}</textarea><div class="lecture-files">${builtInLectureFiles(code,i)}${lectureFiles(code,i) || (!builtInLectureFiles(code,i)?'<div class="small">No files attached to this lecture yet.</div>':'')}</div><div class="lecture-reminder"><span><b>Reading reminder:</b> ${escapeText(c.readings[i]||c.readings[0])}</span><button class="btn ghost" onclick="openCourse('${code}','readings')">Open Reading</button></div></div>`).join('')}${unassigned.length?`<h3>Unassigned files</h3>${unassigned.map(({f,i})=>`<div class="paper-row file-row"><div><b>${escapeText(f.name)}</b><div class="small">${escapeText(f.size||'')} · choose a lecture by uploading it again inside that lecture</div></div><button class="btn ghost danger-text" onclick="removeCourseFile('${code}',${i})">Delete</button></div>`).join('')}`:''}`;
+  }
+  if(tab==='map')return `<div class="course-note"><b>Lecture-by-lecture Knowledge Maps</b><br><span class="small">Each map is generated from the lecture topic, its core keyword and the next learning step.</span></div><div class="map-stack">${c.lectures.map((title,i)=>{const nodes=lectureMapNodes(c,i);return `<div class="lecture-map"><h4>${escapeText(title)}</h4><div class="mindmap">${nodes.map((n,j)=>`${j?'<span class="arrow">→</span>':''}<span class="node">${escapeText(n)}</span>`).join('')}</div></div>`}).join('')}</div><h3>Important concepts</h3><div class="concept-grid">${c.concepts.map((x,i)=>`<div class="concept-card" onclick="openConcept('${code}',${i})"><b>${escapeText(x[0])}</b><p class="small">${escapeText(x[1])}</p></div>`).join('')}</div>`;
+  if(tab==='quiz'){const questions=quizQuestions(c),best=workspaceState.quizScores[code]||0;return `<div class="course-note"><b>Important keyword definitions</b><br><span class="small">Review the definitions, then complete the multiple-choice questions.</span></div><div class="quiz-keywords">${c.concepts.map(x=>`<div class="keyword-card"><b>${escapeText(x[0])}</b><span class="small">${escapeText(x[1])}</span></div>`).join('')}</div><h3>Multiple-choice Quiz</h3>${questions.map((q,qi)=>`<div class="quiz-question"><p>${qi+1}. ${escapeText(q.q)}</p>${q.options.map((x,i)=>`<label class="option"><input type="radio" name="quiz-${code}-${qi}" value="${i}"> ${escapeText(x)}</label>`).join('')}</div>`).join('')}<button class="btn" onclick="checkCourseQuiz('${code}')">Check all answers</button> <span class="badge" id="quizScore-${code}">Best ${best}/${questions.length}</span><div id="quizFeedback-${code}" class="save-note"></div>`}
+  if(tab==='assignments')return c.assignment?`<div class="paper-row clickable" onclick="openAssignment('${c.assignment}')"><b>${escapeText(assignmentCatalog[c.assignment].title)}</b><div class="small">${escapeText(assignmentCatalog[c.assignment].due)} · open workspace</div></div>`:`<div class="empty-state">No assignment has been linked yet.</div>`;
+  if(tab==='readings'){const checked=workspaceState.courseReading[code]||[],uploads=workspaceState.readingUploads[code]||[],items=[...c.readings.map((title,i)=>({title,source:'Lecture '+(i+1)+' reminder'})),...uploads];return `<div class="toolbar"><button class="btn" onclick="document.getElementById('readingUpload-${code}').click()">+ Upload reading</button><input id="readingUpload-${code}" type="file" hidden multiple accept=".pdf,.doc,.docx,.txt,.epub" onchange="addReadingFiles('${code}',event)"><span class="small">Readings come from lecture reminders or your uploaded files.</span></div>${items.map((x,i)=>`<div class="paper-row file-row"><label class="check-row ${checked[i]?'done':''}" style="margin:0;border:0;padding:0"><input type="checkbox" ${checked[i]?'checked':''} onchange="toggleCourseReading('${code}',${i},this.checked)"><span><b>${escapeText(x.title)}</b><div class="small"><span class="source-badge">${escapeText(x.source)}</span> · ${checked[i]?'Completed':'Reading queue'}</div></span></label>${i>=c.readings.length?`<button class="btn ghost danger-text" onclick="removeReadingFile('${code}',${i-c.readings.length})">Delete</button>`:''}</div>`).join('')}`}
+  return '';
+}
+function saveCourseNote(code,value){workspaceState.courseNotes[code]=value;saveWorkspaceState()}
+function saveLectureNote(code,index,value){const notes=workspaceState.lectureNotes[code]||[];notes[index]=value;workspaceState.lectureNotes[code]=notes;saveWorkspaceState()}
+function openWorkspaceFileDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open('jingWorkspaceFilesV1',1);request.onupgradeneeded=()=>request.result.createObjectStore('files');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
+async function putWorkspaceFile(key,file){const db=await openWorkspaceFileDB();return new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put(file,key);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
+async function getWorkspaceFile(key){const db=await openWorkspaceFileDB();return new Promise((resolve,reject)=>{const request=db.transaction('files').objectStore('files').get(key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
+async function deleteWorkspaceFile(key){const db=await openWorkspaceFileDB();return new Promise(resolve=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').delete(key);tx.oncomplete=()=>resolve();tx.onerror=()=>resolve()})}
+async function openStoredWorkspaceFile(key,name){const win=window.open('about:blank','_blank');try{const blob=await getWorkspaceFile(key);if(!blob){if(win)win.close();toast('This file is not stored locally. Upload it again to restore access.');return}const url=URL.createObjectURL(blob);if(win)win.location.href=url;else{const a=document.createElement('a');a.href=url;a.download=name;a.click()}setTimeout(()=>URL.revokeObjectURL(url),60000)}catch(e){if(win)win.close();toast('The local file could not be opened.') }}
+async function addCourseFiles(code,event,kind='course',lectureIndex=null){
+  const files=[...event.target.files];
+  const sourceLabel={slides:'Uploaded slides',photo:'Classroom photo',note:'Lecture file',course:'Course file'}[kind]||'Uploaded file';
+  const entries=[];for(const f of files){const id='course-'+Date.now()+'-'+Math.random().toString(16).slice(2);try{await putWorkspaceFile(id,f)}catch(e){}entries.push({id,name:f.name,size:formatFileSize(f.size),kind,lectureIndex,source:sourceLabel,cached:true})}
+  workspaceState.courseUploads[code]=[...(workspaceState.courseUploads[code]||[]),...entries];
+  files.filter(f=>/class[\s_-]*(activity|task)|assignment|课堂活动/i.test(f.name)).forEach(f=>createGeneratedAssignment(code,f.name));
+  files.filter(f=>/reading|article|paper|reference|文献|阅读/i.test(f.name)).forEach(f=>addReadingEntry(code,f.name,'Uploaded course file'));
+  event.target.value='';saveWorkspaceState();renderAssignments();openCourse(code,'lectures');toast(files.length+' file(s) added and indexed');
+}
+function formatFileSize(bytes){if(bytes<1024*1024)return Math.max(1,Math.round(bytes/1024))+' KB';return (bytes/1024/1024).toFixed(1)+' MB'}
+async function removeCourseFile(code,index){const file=workspaceState.courseUploads[code][index];if(file&&file.id)await deleteWorkspaceFile(file.id);workspaceState.courseUploads[code].splice(index,1);saveWorkspaceState();openCourse(code,'lectures');toast('File removed from Workspace')}
+function openCourseStoredFile(code,index){const file=(workspaceState.courseUploads[code]||[])[index];if(!file)return;if(file.id&&file.cached)return openStoredWorkspaceFile(file.id,file.name);toast('Upload this file again to restore local access.')}
+function lectureMapNodes(c,index){const concept=c.concepts[index%c.concepts.length][0],start=c.trail[Math.min(index,c.trail.length-1)],next=c.trail[Math.min(index+1,c.trail.length-1)];return [...new Set([start,concept,next])]}
+function quizQuestions(c){const names=c.concepts.map(x=>x[0]);return [c.quiz,...c.concepts.slice(0,3).map((x,i)=>({q:'Which keyword matches this definition: “'+x[1]+'”',options:[x[0],names[(i+1)%names.length],names[(i+2)%names.length]],answer:0}))]}
+function teachLecture(code,index){const c=courseCatalog[code],title=c.lectures[index];openModal(`<button class="btn ghost" onclick="openCourse('${code}','lectures')">← Back to lectures</button><h2>${escapeText(title)}</h2><div class="ai-summary"><b>Teach Me</b><p>${escapeText(c.focus)} This session fits into the sequence by connecting <b>${escapeText(c.trail[Math.min(index,c.trail.length-1)])}</b> with the next step in the course.</p></div><h3>Explain it in your own words</h3><textarea oninput="saveCourseNote('${code}',this.value)" placeholder="Write what you understood…">${escapeText(workspaceState.courseNotes[code]||'')}</textarea>`)}
+function openConcept(code,index){const c=courseCatalog[code],x=c.concepts[index];openModal(`<button class="btn ghost" onclick="openCourse('${code}','map')">← Knowledge Map</button><h2>${escapeText(x[0])}</h2><div class="ai-summary">${escapeText(x[1])}</div><h3>Where it connects</h3><div class="mindmap">${c.trail.map((n,i)=>`${i?'<span class="arrow">→</span>':''}<span class="node">${escapeText(n)}</span>`).join('')}</div>`)}
+function checkCourseQuiz(code){const questions=quizQuestions(courseCatalog[code]);let answered=0,correct=0;questions.forEach((q,i)=>{const picked=document.querySelector(`input[name="quiz-${code}-${i}"]:checked`);if(picked){answered++;if(Number(picked.value)===q.answer)correct++}});const out=document.getElementById(`quizFeedback-${code}`);if(answered<questions.length){out.textContent=`Please answer all questions (${answered}/${questions.length} completed).`;return}workspaceState.quizScores[code]=Math.max(Number(workspaceState.quizScores[code])||0,correct);saveWorkspaceState();document.getElementById(`quizScore-${code}`).textContent=`Best ${workspaceState.quizScores[code]}/${questions.length}`;out.textContent=correct===questions.length?'Excellent — all answers are correct.':`${correct}/${questions.length} correct. Review the keyword cards and try again.`}
+function toggleCourseReading(code,index,value){const a=workspaceState.courseReading[code]||[];a[index]=value;workspaceState.courseReading[code]=a;saveWorkspaceState();openCourse(code,'readings')}
+function addReadingEntry(code,title,source='Uploaded file'){const list=workspaceState.readingUploads[code]||[];if(!list.some(x=>x.title===title))list.push({title:title.replace(/\.[^.]+$/,''),source});workspaceState.readingUploads[code]=list}
+function addReadingFiles(code,event){const files=[...event.target.files];files.forEach(f=>addReadingEntry(code,f.name,'Uploaded file · '+formatFileSize(f.size)));event.target.value='';saveWorkspaceState();openCourse(code,'readings');toast(files.length+' reading(s) added')}
+function removeReadingFile(code,index){workspaceState.readingUploads[code].splice(index,1);const base=courseCatalog[code].readings.length;const checked=workspaceState.courseReading[code]||[];checked.splice(base+index,1);workspaceState.courseReading[code]=checked;saveWorkspaceState();openCourse(code,'readings');toast('Reading removed')}
+
+function assignmentProgress(id){const a=workspaceState.assignments[id],total=a.tasks.length;return Math.round(a.tasks.filter(Boolean).length/total*100)}
+function renderAssignments(){
+  Object.keys(assignmentCatalog).forEach(id=>{const p=assignmentProgress(id),label=document.getElementById('assignmentProgress-'+id),bar=document.getElementById('assignmentBar-'+id);if(label)label.textContent='Progress '+p+'%';if(bar)bar.style.width=p+'%'});
+  const first=assignmentCatalog.eds6001,tasks=workspaceState.assignments.eds6001.tasks;
+  document.getElementById('assignmentWeekList').innerHTML=first.tasks.map((done,i)=>`<label class="assignment-row check-row ${done?'done':''}"><input type="checkbox" ${done?'checked':''} onchange="toggleAssignmentTask('eds6001',${i},this.checked)"><span>${escapeText(first.tasks[i])}</span><span class="badge ${done?'good':i===3?'danger':''}">${done?'Done':i===3?'Priority':'To do'}</span></label>`).join('')+workspaceState.miscTasks.map((t,i)=>`<label class="assignment-row check-row ${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} onchange="toggleMiscTask(${i},this.checked)"><span>${escapeText(t.title)}</span><span class="badge">Mail task</span></label>`).join('');
+  const generated=document.getElementById('generatedAssignmentList');
+  if(generated)generated.innerHTML=workspaceState.generatedAssignments.length?workspaceState.generatedAssignments.map(a=>{const progress=generatedAssignmentProgress(a);return `<div class="generated-assignment"><span class="source-badge">${escapeText(a.course)} · from upload</span><h4>${escapeText(a.title)}</h4><p class="small">Source: ${escapeText(a.source)}</p><div class="progress"><span style="width:${progress}%"></span></div><div class="small" style="margin:6px 0 10px">${progress}% complete · ${a.tasks.length} planned steps</div><button class="btn" onclick="openGeneratedAssignment('${a.id}')">Open plan</button> <button class="btn ghost danger-text" onclick="deleteGeneratedAssignment('${a.id}')">Delete</button></div>`}).join(''):'<div class="empty-state">Upload a class activity to generate its assignment plan automatically.</div>';
+}
+function createGeneratedAssignment(code,fileName){
+  if(workspaceState.generatedAssignments.some(a=>a.source===fileName&&a.course===code))return;
+  const clean=fileName.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');
+  const course=courseCatalog[code];
+  workspaceState.generatedAssignments.push({id:'generated-'+Date.now()+'-'+Math.random().toString(16).slice(2),course,title:clean,source:fileName,brief:`Generated from the uploaded classroom activity. Connect its instructions to ${course?course.concepts.slice(0,3).map(x=>x[0]).join(', '):'the course concepts'} and produce a complete response.`,tasks:['Review the activity instructions','Highlight required concepts and evidence','Link the task to lecture notes','Draft the response','Check and finalize for class'],done:[false,false,false,false,false],notes:''});
+}
+function uploadClassActivity(event){const code=document.getElementById('classActivityCourse').value,files=[...event.target.files];files.forEach(f=>createGeneratedAssignment(code,f.name));event.target.value='';saveWorkspaceState();renderAssignments();toast(files.length+' assignment plan(s) generated')}
+function generatedAssignmentProgress(a){return Math.round((a.done||[]).filter(Boolean).length/a.tasks.length*100)}
+function openGeneratedAssignment(id){const a=workspaceState.generatedAssignments.find(x=>x.id===id);if(!a)return;const progress=generatedAssignmentProgress(a);openModal(`<h2>${escapeText(a.course)} · ${escapeText(a.title)}</h2><span class="source-badge">Generated from ${escapeText(a.source)}</span><div class="progress" style="margin-top:12px"><span style="width:${progress}%"></span></div><div class="grid2"><div><h3>What this activity requires</h3><div class="ai-summary">${escapeText(a.brief)}</div><h3>Generated work plan</h3>${a.tasks.map((task,i)=>`<label class="check-row ${(a.done||[])[i]?'done':''}"><input type="checkbox" ${(a.done||[])[i]?'checked':''} onchange="toggleGeneratedAssignmentTask('${a.id}',${i},this.checked)"><span>${escapeText(task)}</span></label>`).join('')}</div><div><h3>Draft notes</h3><textarea oninput="saveGeneratedAssignmentNote('${a.id}',this.value)" placeholder="Write your response, evidence and questions…">${escapeText(a.notes||'')}</textarea><div class="save-note">Saved locally as you type</div><h3>Linked course</h3><div class="paper-row"><b>${escapeText(a.course)}</b><div class="small">Lecture notes, knowledge maps and readings are available in Courses.</div></div></div></div>`)}
+function toggleGeneratedAssignmentTask(id,index,value){const a=workspaceState.generatedAssignments.find(x=>x.id===id);if(!a)return;a.done=a.done||[];a.done[index]=value;saveWorkspaceState();renderAssignments();openGeneratedAssignment(id)}
+function saveGeneratedAssignmentNote(id,value){const a=workspaceState.generatedAssignments.find(x=>x.id===id);if(a){a.notes=value;saveWorkspaceState()}}
+function deleteGeneratedAssignment(id){workspaceState.generatedAssignments=workspaceState.generatedAssignments.filter(a=>a.id!==id);saveWorkspaceState();renderAssignments();toast('Generated assignment removed')}
+function openAssignment(id='eds6001'){
+  const a=assignmentCatalog[id],state=workspaceState.assignments[id],p=assignmentProgress(id);
+  openModal(`<h2>${a.course} · ${escapeText(a.title)}</h2><span class="badge danger">${escapeText(a.due)}</span><div class="progress"><span style="width:${p}%"></span></div><div class="grid2"><div><h3>What the lecturer wants</h3><div class="ai-summary">${escapeText(a.brief)}</div><h3>Work breakdown</h3>${a.tasks.map((t,i)=>`<label class="check-row ${state.tasks[i]?'done':''}"><input type="checkbox" ${state.tasks[i]?'checked':''} onchange="toggleAssignmentTask('${id}',${i},this.checked)"><span>${escapeText(t)}</span></label>`).join('')}</div><div><h3>Relevant lectures</h3>${a.lectures.map(x=>`<div class="paper-row">${escapeText(x)}</div>`).join('')}<h3>Draft notes</h3><textarea oninput="saveAssignmentNote('${id}',this.value)" placeholder="Outline, evidence and next steps…">${escapeText(state.notes||'')}</textarea><div class="save-note">Saved locally as you type</div></div></div>`);
+}
+function toggleAssignmentTask(id,index,value){workspaceState.assignments[id].tasks[index]=value;saveWorkspaceState();renderAssignments();openAssignment(id)}
+function saveAssignmentNote(id,value){workspaceState.assignments[id].notes=value;saveWorkspaceState()}
+function toggleMiscTask(index,value){workspaceState.miscTasks[index].done=value;saveWorkspaceState();renderAssignments()}
+function createMailTask(i){const m=mails[i];if(!workspaceState.miscTasks.some(t=>t.title===m.title))workspaceState.miscTasks.push({title:m.title,done:false});saveWorkspaceState();renderAssignments();toast('Mail task added to Assignments')}
+
+function renderPapers(){
+  const q=document.getElementById('papersQueue');if(!q)return;
+  q.innerHTML=workspaceState.papers.length?workspaceState.papers.map(p=>`<div class="paper-row file-row paper-library-row" style="border-left:4px solid ${paperColorHex(p.highlightColor||'none')}"><div class="clickable" onclick="openPaper('${p.id}')"><b>${escapeText(p.title)}</b><div class="small">${escapeText(p.theme)} · ${escapeText(p.course||'Unlinked')} · ${escapeText(p.status)}${p.fileName?' · uploaded file':''}</div></div><button class="btn ghost danger-text" onclick="deletePaper('${p.id}')">Delete</button></div>`).join(''):'<div class="empty-state">No papers yet. Upload a PDF, Word document or EPUB to start reading.</div>';
+  document.getElementById('paperCountBadge').textContent=workspaceState.papers.length+' papers';document.getElementById('dashboardPaperCount').textContent=workspaceState.papers.length;
+}
+async function importPaper(event){const files=[...event.target.files];for(const f of files){const id='p'+Date.now()+Math.random().toString(16).slice(2);try{await putWorkspaceFile('paper-'+id,f)}catch(e){}workspaceState.papers.push({id,title:f.name.replace(/\.[^.]+$/,''),theme:'Imported',course:'Unlinked',status:'Queued',notes:'',fileName:f.name,hasLocalFile:true,highlightColor:'yellow',highlights:[]})}saveWorkspaceState();renderPapers();event.target.value='';toast(files.length+' paper(s) uploaded')}
+function paperColorHex(color){return {yellow:'#f0c94d',green:'#65bd87',blue:'#6ca7e8',pink:'#e28bac',purple:'#9a84dc',none:'#e9e7f1'}[color]||'#e9e7f1'}
+function paperColorSoft(color){return {yellow:'#fff7cc',green:'#e2f5e9',blue:'#e4f1ff',pink:'#fde8f0',purple:'#eee9ff',none:'#f5f5f7'}[color]||'#f5f5f7'}
+function openPaper(id){const p=workspaceState.papers.find(x=>x.id===id);if(!p)return;p.highlights=p.highlights||[];p.highlightColor=p.highlightColor||'yellow';openModal(`<h2>${escapeText(p.title)}</h2><div class="tabs"><button class="tab active">Reading & Notes</button><button class="tab" onclick="openLiteratureMatrix()">Connections</button></div><div class="grid2"><div><div class="ai-summary"><b>Reading status</b><p>${escapeText(p.status)} · ${escapeText(p.theme)} · linked to ${escapeText(p.course||'no course')}</p></div>${p.fileName?`<button class="btn" onclick="openLocalPaper('${p.id}')">Open uploaded file</button><p class="small">${escapeText(p.fileName)} · stored locally in this browser</p>`:''}<div class="field"><label>Status</label><select class="form-select" onchange="updatePaper('${p.id}','status',this.value)"><option ${p.status==='Queued'?'selected':''}>Queued</option><option ${p.status==='Reading'?'selected':''}>Reading</option><option ${p.status==='Completed'?'selected':''}>Completed</option><option ${p.status==='Priority'?'selected':''}>Priority</option></select></div><div class="field"><label>Course link</label><select class="form-select" onchange="updatePaper('${p.id}','course',this.value)"><option>Unlinked</option>${Object.keys(courseCatalog).map(c=>`<option ${p.course===c?'selected':''}>${c}</option>`).join('')}</select></div><h3>Document marker</h3><div class="color-tools">${['yellow','green','blue','pink','purple','none'].map(color=>`<button class="color-swatch ${p.highlightColor===color?'active':''}" style="background:${paperColorHex(color)}" title="${color}" onclick="setPaperColor('${p.id}','${color}')"></button>`).join('')}</div><p class="small">The selected color marks this paper in your library and is used for new highlights.</p></div><div><h3>Reading notes</h3><textarea oninput="updatePaper('${p.id}','notes',this.value)" placeholder="Main argument, method, findings, useful evidence and questions…">${escapeText(p.notes||'')}</textarea><div class="save-note">Saved locally as you type</div><h3>Highlighted passages</h3><textarea id="paperHighlightText" placeholder="Paste or type an important passage, idea or page reference…" style="min-height:74px"></textarea><button class="btn ghost" onclick="addPaperHighlight('${p.id}')">+ Save color highlight</button><div style="margin-top:10px">${p.highlights.length?p.highlights.map((h,i)=>`<div class="paper-highlight" style="background:${paperColorSoft(h.color)};border-left:4px solid ${paperColorHex(h.color)}"><span>${escapeText(h.text)}</span><button class="btn ghost danger-text" onclick="removePaperHighlight('${p.id}',${i})">Delete</button></div>`).join(''):'<div class="empty-state">No highlights yet.</div>'}</div></div></div>`)}
+function updatePaper(id,key,value){const p=workspaceState.papers.find(x=>x.id===id);if(!p)return;p[key]=value;saveWorkspaceState();renderPapers()}
+async function openLocalPaper(id){const p=workspaceState.papers.find(x=>x.id===id);if(!p||!p.fileName){toast('No uploaded file is attached.');return}await openStoredWorkspaceFile('paper-'+id,p.fileName)}
+async function deletePaper(id){const p=workspaceState.papers.find(x=>x.id===id);if(!p)return;if(!confirm('Delete “'+p.title+'” from Papers?'))return;await deleteWorkspaceFile('paper-'+id);workspaceState.papers=workspaceState.papers.filter(x=>x.id!==id);saveWorkspaceState();renderPapers();toast('Paper deleted')}
+function setPaperColor(id,color){const p=workspaceState.papers.find(x=>x.id===id);if(!p)return;p.highlightColor=color;saveWorkspaceState();renderPapers();openPaper(id)}
+function addPaperHighlight(id){const p=workspaceState.papers.find(x=>x.id===id),input=document.getElementById('paperHighlightText');if(!p||!input||!input.value.trim())return;p.highlights=p.highlights||[];p.highlights.push({text:input.value.trim(),color:p.highlightColor||'yellow'});saveWorkspaceState();openPaper(id)}
+function removePaperHighlight(id,index){const p=workspaceState.papers.find(x=>x.id===id);if(!p)return;(p.highlights||[]).splice(index,1);saveWorkspaceState();openPaper(id)}
+function openPaperCompare(){const list=workspaceState.papers.slice(0,6);openModal(`<h2>Compare Papers</h2><div style="overflow:auto"><table class="table"><thead><tr><th>Paper</th><th>Theme</th><th>Course</th><th>Status</th></tr></thead><tbody>${list.map(p=>`<tr><td>${escapeText(p.title)}</td><td>${escapeText(p.theme)}</td><td>${escapeText(p.course)}</td><td>${escapeText(p.status)}</td></tr>`).join('')}</tbody></table></div>`)}
+function openLiteratureMatrix(){const themes=[...new Set(workspaceState.papers.map(p=>p.theme))];openModal(`<h2>Literature Matrix</h2><p class="small">Organized by theme so you can compare sources instead of summarizing one by one.</p>${themes.map(t=>`<div class="modal-section"><h3>${escapeText(t)}</h3>${workspaceState.papers.filter(p=>p.theme===t).map(p=>`<div class="paper-row clickable" onclick="openPaper('${p.id}')"><b>${escapeText(p.title)}</b><div class="small">${escapeText(p.course)} · ${escapeText(p.status)}</div></div>`).join('')}</div>`).join('')}`)}
+
+const calendarDays=['2026-09-20','2026-09-21','2026-09-22','2026-09-23','2026-09-24','2026-09-25','2026-09-26'];
+function renderCalendar(){const grid=document.getElementById('calendarGrid');if(!grid)return;grid.innerHTML=calendarDays.map(d=>`<div class="day"><b>${new Date(d+'T00:00:00').toLocaleDateString('en',{month:'short',day:'numeric'})}</b>${workspaceState.events.filter(e=>e.date===d).sort((a,b)=>a.time.localeCompare(b.time)).map(e=>`<div class="event" onclick="openEvent('${e.id}')"><b>${escapeText(e.time)}${e.end?'–'+escapeText(e.end):''}</b><br>${escapeText(e.title)}${e.location?'<br><span class="small">⌖ '+escapeText(e.location)+'</span>':''}</div>`).join('')}</div>`).join('')}
+function openAddEvent(){openModal(`<h2>Add calendar event</h2><div class="field"><label>Title</label><input class="form-input" id="eventTitle" placeholder="e.g. Read paper"></div><div class="grid2"><div class="field"><label>Date</label><input class="form-input" id="eventDate" type="date" min="2026-09-20" value="2026-09-21"></div><div class="field"><label>Time</label><input class="form-input" id="eventTime" type="time" value="19:00"></div></div><div class="field"><label>Module</label><select class="form-select" id="eventModule"><option>Course</option><option>Assignment</option><option>Papers</option><option>Review</option><option>Personal</option></select></div><button class="btn" onclick="saveEvent()">Add to calendar</button>`)}
+function saveEvent(){const title=document.getElementById('eventTitle').value.trim(),date=document.getElementById('eventDate').value,time=document.getElementById('eventTime').value;if(!title||!date||!time){toast('Complete the title, date and time');return}workspaceState.events.push({id:'e'+Date.now(),title,date,time,module:document.getElementById('eventModule').value});saveWorkspaceState();renderCalendar();closeModal();toast('Event added')}
+function openEvent(id){const e=workspaceState.events.find(x=>x.id===id);openModal(`<h2>${escapeText(e.title)}</h2><p>${escapeText(e.date)} · ${escapeText(e.time)}${e.end?'–'+escapeText(e.end):''}</p>${e.location?'<div class="course-note"><b>Classroom</b><br>'+escapeText(e.location)+'</div>':''}<span class="badge">${e.recurring?'Semester timetable':escapeText(e.module)}</span>${e.recurring?'<p class="small">Weekly class · Semester 1, 2026–27</p>':`<div class="settings-actions"><button class="btn ghost" onclick="deleteEvent('${id}')">Delete event</button></div>`}`)}
+function deleteEvent(id){workspaceState.events=workspaceState.events.filter(x=>x.id!==id);saveWorkspaceState();renderCalendar();closeModal();toast('Event removed')}
+function openStudyPlan(){openModal(`<h2>Study Plan ✦</h2><div class="ai-summary"><b>Recommended rhythm</b><p>Prioritize EDS6001 methodology, one research paper, and a short EDS6019 concept review.</p></div><div class="paper-row">Mon 19:30 · EDS6001 methodology · 60 min</div><div class="paper-row">Wed 19:30 · Method paper · 90 min</div><div class="paper-row">Fri 15:00 · Topic paper · 90 min</div><button class="btn" onclick="addStudyPlan()">Add plan to calendar</button>`)}
+function addStudyPlan(){const plan=[['2026-09-21','19:30','EDS6001 methodology'],['2026-09-23','19:30','Method paper'],['2026-09-25','15:00','Topic paper']];plan.forEach((x,i)=>{if(!workspaceState.events.some(e=>e.date===x[0]&&e.title===x[2]))workspaceState.events.push({id:'plan'+i,date:x[0],time:x[1],title:x[2],module:'Study plan'})});saveWorkspaceState();renderCalendar();closeModal();toast('Study plan added')}
+
+const stockCatalog={'9988.HK':{name:'Alibaba',price:87.60,currency:'HK$',summary:'The position is positive today. Review company news before changing your investment thesis.'},'0700.HK':{name:'Tencent',price:412.40,currency:'HK$',summary:'The price is slightly lower today; no urgent action is indicated by this local snapshot.'},AAPL:{name:'Apple',price:0,currency:'US$',summary:'Live price data is not connected yet. You can still save your position and investment thesis.'}};
+const chartSets={Intraday:[20,28,24,35,31,42,48,45,58,54],Day:[18,30,26,40,38,52,49,62,57,68],Week:[25,22,33,31,45,42,55,51,64,72],Month:[18,24,30,27,39,48,44,58,66,74],'1Y':[12,20,18,29,35,46,42,58,70,82]};
+function openStock(t,range='Intraday'){const s=stockCatalog[t],saved=workspaceState.stocks[t]||{cost:'',shares:'',thesis:''};openModal(`<h2>${t} · ${escapeText(s.name)}</h2><div class="tabs">${Object.keys(chartSets).map(r=>`<button class="tab ${r===range?'active':''}" onclick="openStock('${t}','${r}')">${r}</button>`).join('')}</div><div class="card"><div class="section-title"><h3>Price view</h3><span class="badge">${escapeText(range)}</span></div><div class="mini-chart">${chartSets[range].map(h=>`<span style="height:${h}%"></span>`).join('')}</div><p class="small">Static portfolio snapshot · live market data is not connected.</p></div><div class="grid2" style="margin-top:14px"><div class="card"><h3>My Position</h3><div class="field"><label>Average cost</label><input class="form-input" id="stockCost" type="number" step="0.01" value="${safeAttr(saved.cost)}"></div><div class="field"><label>Shares</label><input class="form-input" id="stockShares" type="number" step="0.01" value="${safeAttr(saved.shares)}"></div><button class="btn ghost" onclick="saveStockPosition('${t}')">Save position</button><div id="positionResult" class="save-note">${stockPositionText(t,saved)}</div></div><div class="card"><h3>What happened today?</h3><p>${escapeText(s.summary)}</p><h3>Investment thesis</h3><textarea id="stockThesis" placeholder="Why did I buy this stock?">${escapeText(saved.thesis||'')}</textarea><button class="btn ghost" onclick="saveStockThesis('${t}')">Save thesis</button></div></div>`)}
+function stockPositionText(t,p){const s=stockCatalog[t],cost=Number(p.cost),shares=Number(p.shares);if(!cost||!shares||!s.price)return 'Enter cost and shares to calculate.';const pl=(s.price-cost)*shares,ret=(s.price/cost-1)*100;return `Current value: ${s.currency}${(s.price*shares).toFixed(2)} · P/L: ${pl>=0?'+':''}${s.currency}${pl.toFixed(2)} · ${ret.toFixed(1)}%`}
+function saveStockPosition(t){const saved=workspaceState.stocks[t]||{};saved.cost=document.getElementById('stockCost').value;saved.shares=document.getElementById('stockShares').value;workspaceState.stocks[t]=saved;saveWorkspaceState();document.getElementById('positionResult').textContent=stockPositionText(t,saved);toast('Position saved')}
+function saveStockThesis(t){const saved=workspaceState.stocks[t]||{};saved.thesis=document.getElementById('stockThesis').value;workspaceState.stocks[t]=saved;saveWorkspaceState();toast('Investment thesis saved')}
+
+function workspaceAnswer(question){const q=question.toLowerCase();if(/今天|today|先做|priority/.test(q)){const action=mails.find(m=>m.tag==='Action required');return `Today, start with ${assignmentCatalog.eds6001.title}, then review ${action?action.title:'your latest important email'}, and finish one priority paper.`}if(/6001|research|method/.test(q))return `EDS6001 currently connects literature review → research gap → research questions → research design. Your assignment progress is ${assignmentProgress('eds6001')}%.`;if(/邮件|email|mail/.test(q))return `Gmail has ${gmailSnapshot.inboxUnread} unread inbox messages. In the latest summary, ${mails.filter(m=>m.tag==='Action required').length} message needs review.`;if(/作业|assignment|deadline/.test(q))return `You have three active assignments. EDS6001 is closest and is ${assignmentProgress('eds6001')}% complete.`;if(/论文|paper|reading/.test(q))return `There are ${workspaceState.papers.length} papers in your library, including ${workspaceState.papers.filter(p=>p.status==='Priority').length} priority paper.`;if(/股票|market|portfolio/.test(q))return `Portfolio notes are available for Alibaba, Tencent and Apple. Live prices are not connected, but your positions and investment theses can be saved locally.`;return `I can search your local courses, assignments, papers, Gmail summary, calendar and portfolio. Try asking “我今天先做什么？” or “EDS6001进度怎么样？”`}
+function openAssistant(){const history=workspaceState.chat.slice(-6);openModal(`<h2>Ask Workspace ✦</h2><p class="small">Searches the information currently stored in this workspace.</p><div class="assistant-thread" id="assistantThread">${history.map(m=>`<div class="assistant-msg ${m.role}">${escapeText(m.text)}</div>`).join('')}</div><textarea id="assistantQuestion" placeholder="例如：我今天最应该先做什么？"></textarea><div class="settings-actions"><button class="btn" onclick="askWorkspace()">Ask</button></div>`)}
+function askWorkspace(){const input=document.getElementById('assistantQuestion'),q=input.value.trim();if(!q)return;const answer=workspaceAnswer(q);workspaceState.chat.push({role:'user',text:q},{role:'ai',text:answer});saveWorkspaceState();openAssistant()}
+document.getElementById('askAI').onclick=openAssistant;
+function openSummarize(){openModal(`<h2>Summarize ✦</h2><p class="small">Choose what you want condensed into a quick brief.</p><div class="concept-grid"><div class="concept-card" onclick="showGeneratedSummary('today')"><b>Today</b><p class="small">Tasks, classes and the most important next step.</p></div><div class="concept-card" onclick="showGeneratedSummary('mail')"><b>Important mail</b><p class="small">High, Action and Medium messages.</p></div><div class="concept-card" onclick="showGeneratedSummary('course')"><b>EDS6001</b><p class="small">Course logic and current assignment focus.</p></div><div class="concept-card" onclick="showGeneratedSummary('papers')"><b>Research papers</b><p class="small">Themes, priorities and reading status.</p></div></div>`)}
+function showGeneratedSummary(type){let title='',body='';if(type==='today'){title='Today’s brief';const classes=workspaceState.events.filter(e=>e.module==='Course').slice(0,4);body=`You have ${dashboardFocusItems.length-(workspaceState.dashboardFocus||[]).filter(Boolean).length} focus items remaining. Your fixed classes this week are ${classes.map(e=>e.title+' '+e.time).join(', ')}. Start with the Gmail security alert, then continue the EDS6001 methodology.`}else if(type==='mail'){title='Important mail summary';body=mails.map(m=>`${m.priority}: ${m.title} — ${m.action}`).join('\n\n')}else if(type==='course'){title='EDS6001 summary';body='The course moves from qualitative research foundations to literature review, research gap, research questions, research design and data collection. The closest assignment priority is drafting a coherent methodology section.'}else{title='Research papers summary';body=`Your library contains ${workspaceState.papers.length} papers. Current themes include ${[...new Set(workspaceState.papers.map(p=>p.theme))].join(', ')}. Prioritize the paper marked Priority, then update its course link and notes.`}window.lastGeneratedSummary=body;openModal(`<button class="btn ghost" onclick="openSummarize()">← Back</button><h2>${escapeText(title)}</h2><div class="ai-summary" style="white-space:pre-line">${escapeText(body)}</div><button class="btn ghost" onclick="copyGeneratedSummary()">Copy summary</button>`)}
+function copyGeneratedSummary(){if(navigator.clipboard)navigator.clipboard.writeText(window.lastGeneratedSummary||'').then(()=>toast('Summary copied'));else toast('Select and copy the summary')}
+function openDraftWrite(){openModal(`<h2>Draft & Write ✍️</h2><div class="grid2"><div><div class="field"><label>Format</label><select class="form-select" id="draftType"><option>Email</option><option>Study note</option><option>Assignment outline</option></select></div><div class="field"><label>Tone</label><select class="form-select" id="draftTone"><option>Polite</option><option>Concise</option><option>Academic</option></select></div><div class="field"><label>What should it say?</label><textarea id="draftPrompt" placeholder="例如：向老师确认下周作业提交时间"></textarea></div><button class="btn" onclick="generateDraft()">Generate draft</button></div><div><h3>Draft</h3><textarea id="draftOutput" style="min-height:220px" placeholder="Your editable draft will appear here."></textarea><div class="save-note">You can edit the result before copying it.</div></div></div>`)}
+function generateDraft(){const type=document.getElementById('draftType').value,tone=document.getElementById('draftTone').value,prompt=document.getElementById('draftPrompt').value.trim();if(!prompt){toast('Describe what you want to write');return}let text='';if(type==='Email'){const opening=tone==='Academic'?'Dear Professor,':'Dear Professor,';const close=tone==='Concise'?'Best,\nJing':'Thank you for your time and guidance.\n\nBest regards,\nJing';text=`${opening}\n\nI am writing regarding ${prompt}. Could you please provide clarification when convenient?\n\n${close}`}else if(type==='Study note'){text=`Topic: ${prompt}\n\nCore idea:\n• Explain the concept in your own words.\n\nConnection:\n• Link it to the lecture and one practical example.\n\nQuestion to review:\n• What evidence supports this idea?`}else{text=`Working title: ${prompt}\n\n1. Introduction and problem\n2. Key literature themes\n3. Critical analysis\n4. Evidence and examples\n5. Implications\n6. Conclusion`};document.getElementById('draftOutput').value=text;toast('Draft generated')}
+
+function searchWorkspace(query){const q=query.trim().toLowerCase();if(!q)return;const results=[];Object.entries(courseCatalog).forEach(([code,c])=>{if((code+' '+c.title+' '+c.concepts.flat().join(' ')).toLowerCase().includes(q))results.push({title:code+' · '+c.title,meta:'Course',action:`openCourse('${code}')`})});Object.entries(assignmentCatalog).forEach(([id,a])=>{if((a.course+' '+a.title+' '+a.tasks.join(' ')).toLowerCase().includes(q))results.push({title:a.course+' · '+a.title,meta:'Assignment',action:`openAssignment('${id}')`})});workspaceState.papers.forEach(p=>{if((p.title+' '+p.theme+' '+p.course).toLowerCase().includes(q))results.push({title:p.title,meta:'Paper',action:`openPaper('${p.id}')`})});mails.forEach((m,i)=>{if((m.sender+' '+m.title+' '+m.summary).toLowerCase().includes(q))results.push({title:m.title,meta:'Gmail · '+m.sender,action:`closeModal();go('mail')`})});openModal(`<h2>Search results</h2><p class="small">${results.length} result(s) for “${escapeText(query)}”</p>${results.length?results.slice(0,12).map(r=>`<div class="paper-row clickable" onclick="${r.action}"><b>${escapeText(r.title)}</b><div class="small">${escapeText(r.meta)}</div></div>`).join(''):'<div class="empty-state">No matching workspace item.</div>'}`)}
+document.getElementById('workspaceSearch').addEventListener('keydown',e=>{if(e.key==='Enter')searchWorkspace(e.target.value)});
+
+/* Dashboard focus is populated by dashboard-engine.js from current workspace sources. */
+const dashboardFocusItems=[];
+function renderDashboard(){
+  const focus=document.getElementById('dashboardFocus');if(!focus)return;
+  const done=workspaceState.dashboardFocus||[];
+  focus.innerHTML=dashboardFocusItems.map((x,i)=>`<div class="dash-focus-row focus-${x.tone} ${done[i]?'done':''}" onclick="runFocusAction(${i})"><span class="focus-emoji">${x.emoji}</span><input type="checkbox" ${done[i]?'checked':''} onclick="event.stopPropagation()" onchange="toggleDashboardFocus(${i},this.checked)"><div class="focus-copy"><b>${escapeText(x.title)}</b></div><span class="dash-time">${escapeText(x.time)}</span><span class="soft-tag ${x.tone}">${escapeText(x.tag)}</span></div>`).join('');
+  const mailBox=document.getElementById('dashboardEmails');
+  mailBox.innerHTML=mails.slice(0,4).map((m,i)=>`<div class="dash-mail-row" onclick="selectImportantMail(${i})"><div class="sender-dot">${escapeText(m.sender.charAt(0))}</div><div class="mail-copy"><b>${escapeText(m.sender)}</b><span>${escapeText(m.title)} · ${escapeText(m.summary)}</span></div><div class="mail-priority"><span class="dash-time">${escapeText(m.received.split('·').pop().trim())}</span><span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span></div></div>`).join('');
+  const agenda=document.getElementById('dashboardAgenda');
+  agenda.innerHTML=workspaceState.events.slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).slice(0,7).map(e=>`<div class="agenda-row" onclick="openEvent('${e.id}')"><div><b>${escapeText(e.time)}${e.end?'–'+escapeText(e.end):''}</b><span>${escapeText(e.title)}</span></div>${e.location?`<div class="small">⌖ ${escapeText(e.location)}</div>`:''}</div>`).join('');
+  const courseOrder=['EDS6001','EDS6019','ECE6156'];
+  document.getElementById('dashboardCourses').innerHTML=courseOrder.map((code,i)=>{const c=courseCatalog[code],progress=[72,66,61][i];return `<div class="mini-course" onclick="openCourse('${code}')"><div class="course-color" style="filter:hue-rotate(${i*48}deg)"></div><h4>${code}</h4><p>${escapeText(c.title)}</p><div class="progress"><span style="width:${progress}%"></span></div><span class="small">${progress}% reviewed</span></div>`}).join('');
+  document.getElementById('dashboardRecentPapers').innerHTML=workspaceState.papers.slice(0,5).map((p,i)=>`<div class="ranked-row" onclick="openPaper('${p.id}')"><div class="rank">${i+1}</div><div><b>${escapeText(p.title)}</b><br><span>${escapeText(p.theme)} · ${escapeText(p.course)}</span></div><span class="badge ${p.status==='Priority'?'warn':p.status==='Completed'?'good':''}">${escapeText(p.status)}</span></div>`).join('');
+  const watch=[['9988.HK','Alibaba','87.60','+2.31%',[6,10,8,14,13,18,17,21]],['0700.HK','Tencent','412.40','-0.42%',[18,16,15,13,15,12,11,10]],['AAPL','Apple','—','Snapshot',[7,9,8,12,11,14,16,17]]];
+  document.getElementById('dashboardWatchlist').innerHTML=watch.map(w=>`<div class="watch-row" onclick="openStock('${w[0]}')"><div><b>${w[0]}</b><div class="small">${w[1]}</div></div><div class="watch-spark">${w[4].map(h=>`<i style="height:${h}px;${w[3].startsWith('-')?'background:#e86d78':''}"></i>`).join('')}</div><div class="watch-value">${w[2]}<em style="${w[3].startsWith('-')?'color:#d45757':''}">${w[3]}</em></div></div>`).join('');
+  document.getElementById('dashUnreadCount').textContent=gmailSnapshot.inboxUnread+' unread';
+  document.getElementById('dashTaskCount').textContent=dashboardFocusItems.length-done.filter(Boolean).length;
+  document.getElementById('topDate').textContent=new Date('2026-09-20T12:00:00').toLocaleDateString('en',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+function runFocusAction(index){dashboardFocusItems[index].action()}
+function toggleDashboardFocus(index,value){workspaceState.dashboardFocus[index]=value;saveWorkspaceState()}
+function openQuickCreate(){openModal(`<h2>New workspace item</h2><div class="concept-grid"><div class="concept-card" onclick="openAddEvent()"><b>Calendar event</b><p class="small">Add a class, study block or personal event.</p></div><div class="concept-card" onclick="openQuickTask()"><b>Task</b><p class="small">Add something to this week’s task list.</p></div><div class="concept-card" onclick="closeModal();go('papers');document.getElementById('paperFile').click()"><b>Paper</b><p class="small">Import a PDF or Word document.</p></div><div class="concept-card" onclick="openCourse('EDS6001','lectures')"><b>Course file</b><p class="small">Add slides or course material.</p></div></div>`)}
+function openQuickTask(){openModal(`<h2>Add task</h2><div class="field"><label>Task</label><input class="form-input" id="quickTaskTitle" placeholder="What needs to be done?"></div><button class="btn" onclick="saveQuickTask()">Add task</button>`)}
+function saveQuickTask(){const title=document.getElementById('quickTaskTitle').value.trim();if(!title)return;workspaceState.miscTasks.push({title,done:false});saveWorkspaceState();renderAssignments();closeModal();toast('Task added')}
+function openTodaySummary(){const next=workspaceState.events.slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];openModal(`<h2>Today at a glance</h2><div class="ai-summary"><b>${dashboardFocusItems.length-(workspaceState.dashboardFocus||[]).filter(Boolean).length} focus items remaining</b><p>${mails.filter(m=>m.tag==='Action required').length} important email needs review. Your closest assignment is EDS6001 Research Proposal.</p></div><div class="paper-row"><b>Next scheduled item</b><div class="small">${next?escapeText(next.time+' '+next.title+(next.location?' · '+next.location:'')):'No event scheduled'}</div></div><button class="btn" onclick="closeModal();openStudyPlan()">Plan the day</button>`)}
+function askFromDashboard(){const input=document.getElementById('dashboardAsk'),q=input.value.trim();if(!q)return;const answer=workspaceAnswer(q);workspaceState.chat.push({role:'user',text:q},{role:'ai',text:answer});saveWorkspaceState();input.value='';openAssistant()}
+
+document.querySelectorAll('.mail-cats .pill').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.mail-cats .pill').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const label=btn.textContent.trim();const filtered=label==='Deadline'?[]:mails.map((m,i)=>({m,i})).filter(x=>label==='Action Required'?x.m.tag==='Action required':x.m.tag===label);const list=document.getElementById('gmailMailList');list.innerHTML=filtered.length?filtered.map((x,j)=>`<div class="mail-row ${j===0?'active':''}" onclick="showMail(this,${x.i})"><div class="mail-row-top"><b>${escapeText(x.m.sender)}</b><span><span class="priority-badge ${priorityClass(x.m.priority)}">${escapeText(x.m.priority||'Low')}</span> <span class="mail-time">${escapeText(x.m.received)}</span></span></div><div>${escapeText(x.m.title)}</div><div class="small">AI: ${escapeText(x.m.summary)}</div></div>`).join(''):'<div class="empty-state">No messages in this category.</div>';if(filtered.length)showMail(list.querySelector('.mail-row'),filtered[0].i)});
+
+renderAssignments();renderPapers();renderCalendar();renderDashboard();
+</script>
+<script src="pdf.worker.classic.js"></script>
+<script src="pdf.classic.js"></script>
+<script src="jszip.min.js"></script>
+
+<script src="course-engine.js"></script>
+<script src="dashboard-engine.js"></script>
+<script src="workspace-api.js"></script>
+</body>
+</html>
