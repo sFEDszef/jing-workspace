@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import {handle,filterMessage,resolveMailReferences,assistantInstructions} from './server.mjs';
+import {handle,filterMessage,resolveMailReferences,assistantInstructions,sealGmailGrant,unsealGmailGrant} from './server.mjs';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 
@@ -10,6 +10,15 @@ test('mail citations resolve only to snapshot originals',()=>{
   assert.equal(resolveMailReferences('Source: [M1]',emails),'Source: [打开原邮件](https://mail.google.com/mail/u/0/#all/abc)');
   assert.doesNotMatch(resolveMailReferences('[M2] [M99]',emails),/javascript:|\]\(/);
   assert.match(assistantInstructions,/expired/);
+});
+test('Gmail grant cookie is encrypted, authenticated and contains only the persistent grant',()=>{
+  const key=Buffer.alloc(32,7),grant={refresh_token:'test-refresh-token-value',email:'owner@example.com',access_token:'temporary-access-token'};
+  const sealed=sealGmailGrant(grant,key);
+  assert.doesNotMatch(sealed,/test-refresh|owner@example|temporary-access/);
+  const restored=unsealGmailGrant(sealed,key);
+  assert.equal(restored.refresh_token,grant.refresh_token);assert.equal(restored.email,grant.email);assert.equal(restored.access_token,undefined);
+  assert.equal(unsealGmailGrant(sealed.slice(0,-1)+(sealed.endsWith('A')?'B':'A'),key),null);
+  assert.equal(unsealGmailGrant(sealed,Buffer.alloc(32,8)),null);
 });
 test('assistant formats paragraphs and original links without executing model HTML',async()=>{
   const source=await readFile(new URL('./workspace-api.js',import.meta.url),'utf8');
@@ -34,6 +43,8 @@ test('private API rejects unauthenticated access, then checks server configurati
     r=await fetch(base+'/course-engine.js');assert.equal(r.status,401);
     r=await fetch(base+'/login');assert.equal(r.status,200);assert.match(await r.text(),/请输入密码/);
     r=await fetch(base+'/api/gmail/snapshot');assert.equal(r.status,401);
+    r=await fetch(base+'/papers.js');assert.equal(r.status,401);
+    r=await fetch(base+'/api/papers/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});assert.equal(r.status,401);
     r=await fetch(base+'/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:'今天要做什么'})});assert.equal(r.status,401);
     r=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:'anything'})});assert.equal(r.status,503);
     process.env.WORKSPACE_PASSWORD='test-only-long-workspace-password';
@@ -43,6 +54,9 @@ test('private API rejects unauthenticated access, then checks server configurati
     assert.match(cookie,/SameSite=Lax/);assert.doesNotMatch(cookie,/Max-Age=28800/);
     r=await fetch(base+'/',{headers:{Cookie:session}});assert.equal(r.status,200);assert.match(await r.text(),/window.JING_PRIVATE_SITE=true/);
     r=await fetch(base+'/course-engine.js',{headers:{Cookie:session}});assert.equal(r.status,200);
+    r=await fetch(base+'/papers.css',{headers:{Cookie:session}});assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/text\/css/);
+    r=await fetch(base+'/api/papers/analyze',{method:'POST',headers:{Cookie:session,'Content-Type':'application/json'},body:JSON.stringify({mode:'summary',consent:false})});assert.equal(r.status,422);
+    r=await fetch(base+'/api/papers/analyze',{method:'POST',headers:{Cookie:session,'Content-Type':'application/json'},body:JSON.stringify({mode:'summary',consent:true,papers:[{id:'p1',title:'Test',pages:[{page:1,text:'Test source text.'}]}]})});assert.equal(r.status,503);
     process.env.WORKSPACE_PASSWORD='changed-test-only-long-password';
     r=await fetch(base+'/',{headers:{Cookie:session},redirect:'manual'});assert.equal(r.status,303);
     process.env.WORKSPACE_PASSWORD='test-only-long-workspace-password';

@@ -3,6 +3,7 @@ import {readFile,writeFile,mkdir,rename} from 'node:fs/promises';
 import {createHash,randomBytes,timingSafeEqual,createCipheriv,createDecipheriv} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import {validatePaperRequest, paperInstructions, validatePaperAnswer} from './papers-ai.mjs';
 
 const env=process.env, root=path.dirname(fileURLToPath(import.meta.url));
 const publicBase=(env.BACKEND_PUBLIC_URL||env.RENDER_EXTERNAL_URL||'http://localhost:3000').replace(/\/$/,'');
@@ -11,6 +12,7 @@ const secure=publicBase.startsWith('https:');
 const sessions=new Map(),loginAttempts=new Map();
 const tokenPath=path.join(root,'.private','gmail.enc');
 const encryptionKey=env.TOKEN_ENCRYPTION_KEY?Buffer.from(env.TOKEN_ENCRYPTION_KEY,'base64'):null;
+const gmailCookieName='jing_gmail',gmailCookieAad=Buffer.from('jing-workspace-gmail-v1');
 const googleConfigured=()=>Boolean(env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET&&env.GOOGLE_OWNER_EMAIL&&encryptionKey?.length===32);
 const aiConfigured=()=>Boolean(env.DEEPSEEK_API_KEY);
 let tokens=null;
@@ -23,13 +25,34 @@ async function persistTokens(){
   await writeFile(tokenPath+'.tmp',JSON.stringify({iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),data:data.toString('base64')}),{mode:0o600});
   await rename(tokenPath+'.tmp',tokenPath);
 }
+function cookieValue(req,name){return (req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='))?.slice(name.length+1)||'';}
 function cookie(value,maxAge=34560000){return `jing_session=${value}; HttpOnly; Path=/; Max-Age=${maxAge}; ${secure?'Secure; ':''}SameSite=Lax`;}
-function sessionFor(req){const id=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('jing_session='))?.slice(13);const s=sessions.get(id);if(s&&s.passwordTag===passwordTag())return {id,...s};if(id)sessions.delete(id);return null;}
+function gmailCookie(value,maxAge=34560000){return `${gmailCookieName}=${value}; HttpOnly; Path=/; Max-Age=${maxAge}; ${secure?'Secure; ':''}SameSite=Lax`;}
+export function sealGmailGrant(grant,key=encryptionKey){
+  if(!key||key.length!==32||typeof grant?.refresh_token!=='string'||!grant.refresh_token||typeof grant?.email!=='string'||!grant.email)throw new Error('无法保存 Gmail 持久授权。');
+  const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',key,iv);cipher.setAAD(gmailCookieAad);
+  const data=Buffer.concat([cipher.update(JSON.stringify({refresh_token:grant.refresh_token,email:grant.email,created_at:Date.now()})),cipher.final()]);
+  return ['v1',iv.toString('base64url'),cipher.getAuthTag().toString('base64url'),data.toString('base64url')].join('.');
+}
+export function unsealGmailGrant(value,key=encryptionKey){
+  try{
+    const [version,iv,tag,data,...extra]=String(value||'').split('.');if(version!=='v1'||extra.length||!key||key.length!==32)return null;
+    const decipher=createDecipheriv('aes-256-gcm',key,Buffer.from(iv,'base64url'));decipher.setAAD(gmailCookieAad);decipher.setAuthTag(Buffer.from(tag,'base64url'));
+    const grant=JSON.parse(Buffer.concat([decipher.update(Buffer.from(data,'base64url')),decipher.final()]).toString());
+    return typeof grant.refresh_token==='string'&&grant.refresh_token&&typeof grant.email==='string'&&grant.email?grant:null;
+  }catch{return null;}
+}
+function restoreGmailGrant(req){
+  const grant=unsealGmailGrant(cookieValue(req,gmailCookieName));
+  if(!grant||String(grant.email).toLowerCase()!==String(env.GOOGLE_OWNER_EMAIL||'').toLowerCase())return false;
+  tokens={refresh_token:grant.refresh_token,email:grant.email,expires_at:0};return true;
+}
+function sessionFor(req){const id=cookieValue(req,'jing_session');const s=sessions.get(id);if(s&&s.passwordTag===passwordTag())return {id,...s};if(id)sessions.delete(id);return null;}
 function passwordTag(){return createHash('sha256').update(env.WORKSPACE_PASSWORD||'').digest('hex');}
 function equal(a,b){return timingSafeEqual(createHash('sha256').update(String(a)).digest(),createHash('sha256').update(String(b)).digest());}
 function limit(map,key,max,windowMs){const now=Date.now();if(map.size>10000){for(const[k,v]of map)if(v.until<now)map.delete(k);}let v=map.get(key);if(!v||v.until<now){v={count:0,until:now+windowMs};map.set(key,v);}return ++v.count<=max;}
 function json(res,code,data){res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));}
-async function body(req){let size=0,out='';for await(const chunk of req){size+=chunk.length;if(size>50000)throw Object.assign(new Error('请求内容过大。'),{status:413});out+=chunk;}try{return JSON.parse(out||'{}');}catch{throw Object.assign(new Error('请求格式错误。'),{status:400});}}
+async function body(req,max=50000){let size=0,out='';for await(const chunk of req){size+=chunk.length;if(size>max)throw Object.assign(new Error('请求内容过大。'),{status:413});out+=chunk;}try{return JSON.parse(out||'{}');}catch{throw Object.assign(new Error('请求格式错误。'),{status:400});}}
 async function remote(url,options={}){const response=await fetch(url,{...options,signal:AbortSignal.timeout(45000)});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error('外部服务请求失败，请检查授权、服务状态与服务器配置。');return result;}
 async function googleToken(){
   if(!tokens)throw Object.assign(new Error('请先连接 Gmail。'),{status:409});
@@ -56,7 +79,7 @@ async function snapshot(){
   emails.sort((a,b)=>b.received.localeCompare(a.received));
   return {account:tokens.email,lastSync:new Date().toISOString(),inboxUnread:emails.filter(m=>m.unread).length,emails,windowDays:7,limit:100,truncated:Boolean(listed.nextPageToken),unreadScope:'Unread conversations in this 7-day snapshot (not the entire inbox)'};
 }
-const staticFiles=new Set(['index.html','course-engine.js','dashboard-engine.js','workspace-api.js','pdf.classic.js','pdf.worker.classic.js','jszip.min.js']);
+const staticFiles=new Set(['index.html','course-engine.js','dashboard-engine.js','workspace-api.js','pdf.classic.js','pdf.worker.classic.js','jszip.min.js','papers.js','papers.css']);
 export function resolveMailReferences(answer,emails=[]){
   return answer.replace(/\[M(\d+)\]/g,(_,number)=>{
     const email=emails[Number(number)-1];
@@ -84,6 +107,7 @@ export async function handle(req,res){
   if(req.method==='OPTIONS'){res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type');res.writeHead(204);res.end();return;}
   try {
     const s=sessionFor(req),pathname=url.pathname;
+    if(s&&!tokens&&restoreGmailGrant(req))persistTokens().catch(()=>{});
     if(pathname==='/health'&&req.method==='GET'){json(res,200,{ok:true});return;}
     if(pathname==='/login'&&req.method==='GET'){
       if(s){res.writeHead(303,{Location:'/'});res.end();return;}
@@ -116,11 +140,18 @@ export async function handle(req,res){
       const result=await remote('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,code:url.searchParams.get('code'),redirect_uri:publicBase+'/auth/google/callback',grant_type:'authorization_code'})});
       const profile=await remote('https://gmail.googleapis.com/gmail/v1/users/me/profile',{headers:{Authorization:'Bearer '+result.access_token}});
       if(String(profile.emailAddress).toLowerCase()!==env.GOOGLE_OWNER_EMAIL.toLowerCase()){await fetch('https://oauth2.googleapis.com/revoke',{method:'POST',body:new URLSearchParams({token:result.refresh_token||result.access_token})}).catch(()=>{});throw Object.assign(new Error('请使用服务器允许的 Gmail 账号授权。'),{status:403});}
-      tokens={...result,email:profile.emailAddress,expires_at:Date.now()+Number(result.expires_in)*1000};await persistTokens();res.writeHead(200,{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store'});res.end('<h1>Jing Workspace</h1><p>Gmail 已连接（只读）。请返回工作台点击 Refresh mail。</p>');return;
+      tokens={...result,email:profile.emailAddress,expires_at:Date.now()+Number(result.expires_in)*1000};await persistTokens();res.setHeader('Set-Cookie',gmailCookie(sealGmailGrant(tokens)));res.writeHead(303,{Location:'/'});res.end();return;
     }
-    if(pathname==='/api/gmail/snapshot'&&req.method==='GET'){json(res,200,await snapshot());return;}
+    if(pathname==='/api/gmail/snapshot'&&req.method==='GET'){const data=await snapshot();res.setHeader('Set-Cookie',gmailCookie(sealGmailGrant(tokens)));json(res,200,data);return;}
     if(pathname==='/api/gmail/disconnect'&&req.method==='POST'){
-      if(tokens){await remote('https://oauth2.googleapis.com/revoke',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:tokens.refresh_token||tokens.access_token})});tokens=null;await persistTokens();}json(res,200,{ok:true});return;
+      if(tokens){await remote('https://oauth2.googleapis.com/revoke',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:tokens.refresh_token||tokens.access_token})});tokens=null;await persistTokens();}res.setHeader('Set-Cookie',gmailCookie('',0));json(res,200,{ok:true});return;
+    }
+    if(pathname==='/api/papers/analyze'&&req.method==='POST'){
+      const data=validatePaperRequest(await body(req,1000000));
+      if(!aiConfigured())throw Object.assign(new Error('DeepSeek 尚未配置，请打开 AI 连接设置。'),{status:503});
+      const result=await remote('https://api.deepseek.com/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+env.DEEPSEEK_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:env.DEEPSEEK_MODEL||'deepseek-chat',temperature:0.1,max_tokens:6500,response_format:{type:'json_object'},messages:[{role:'system',content:paperInstructions},{role:'user',content:JSON.stringify(data)}]})});
+      const answer=validatePaperAnswer(result.choices?.[0]?.message?.content,data);
+      json(res,200,{...answer,source:'deepseek',model:env.DEEPSEEK_MODEL||'deepseek-chat',generatedAt:new Date().toISOString()});return;
     }
     if(pathname==='/api/ask'&&req.method==='POST'){
       const data=await body(req);if(typeof data.question!=='string'||!data.question.trim()||data.question.length>4000)throw Object.assign(new Error('请输入 1–4000 字符的问题。'),{status:400});
@@ -134,7 +165,7 @@ export async function handle(req,res){
     const file=pathname==='/'?'index.html':pathname.slice(1);if(req.method==='GET'&&staticFiles.has(file)){
       if(!s){if(file==='index.html'){res.writeHead(303,{Location:'/login'});res.end();}else json(res,401,{error:'请先登录工作台。'});return;}
       res.setHeader('Set-Cookie',cookie(s.id));
-      const type=file.endsWith('.html')?'text/html;charset=utf-8':'text/javascript;charset=utf-8';
+      const type=file.endsWith('.html')?'text/html;charset=utf-8':file.endsWith('.css')?'text/css;charset=utf-8':'text/javascript;charset=utf-8';
       let content=await readFile(path.join(root,file),'utf8');
       if(file==='index.html')content=content.replace('<head>','<head><script>window.JING_PRIVATE_SITE=true;</script>');
       res.writeHead(200,{'Content-Type':type});res.end(content);return;

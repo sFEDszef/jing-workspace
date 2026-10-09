@@ -16,7 +16,7 @@
       status=await request('/api/status');
       if(!status.authenticated)mailPhase('login','登录服务器后才能检查 Gmail 授权。');
       else if(!status.gmailConfigured)mailPhase('unconfigured','服务器尚未配置 Google OAuth。');
-      else if(!status.gmailConnected)mailPhase('reauthorize','服务器没有可用的 Gmail 授权；部署或重启后可能需要重新连接。');
+      else if(!status.gmailConnected)mailPhase('reauthorize','没有可恢复的 Gmail 授权；请重新连接一次。以后部署或重启将自动恢复。');
       else {mailPhase(previousPhase==='syncError'?'syncError':previousPhase!=='reauthorize'&&Number.isFinite(new Date(gmailSnapshot.lastSync).getTime())?'synced':'authorized',previousPhase==='syncError'?previousError:'');if(autoSync)await syncWorkspaceGmail(true);}
     }catch(e){mailPhase(e.httpStatus===401?'login':'error',e.message);}
     finally{checkingConnection=false;updateConnectionLabel();}
@@ -30,11 +30,12 @@
     if (!response.ok) {const error=new Error(data.error || `连接失败 (${response.status})`);error.httpStatus=response.status;throw error;}
     return data;
   }
+  window.requestPaperAnalysis = data => request('/api/papers/analyze', data);
   window.openWorkspaceConnection = function () {
     openModal(`<h2>AI & Gmail settings</h2><p class="small">GitHub Pages hosts this website. A private backend handles DeepSeek and Gmail. API keys belong in server environment variables.</p><div class="field"><label>Backend URL</label><input class="form-input" id="workspaceBackend" type="url" value="${escapeText(base())}" placeholder="https://your-private-backend.example.com"></div><div class="settings-actions"><button class="btn" onclick="saveWorkspaceConnection()">Save & check connection</button></div><div id="connectionState" class="course-note">${status ? escapeText(status.authenticated ? '已登录私人后端' : '请登录私人后端') : '未检测连接'}</div><div class="field"><label>Private backend password (not saved in this browser)</label><input class="form-input" id="backendPassword" type="password" autocomplete="off"></div><button class="btn ghost" onclick="loginWorkspaceBackend()">Sign in to backend</button><label class="check-row"><input type="checkbox" id="gmailAiConsent" ${config.gmailAiConsent ? 'checked' : ''} onchange="setGmailAiConsent(this.checked)"><span>允许将最近 7 天邮件的发件人、主题和已过滤的简短摘要发送到我的后端及 DeepSeek，用于分析待办。不会发送附件或完整正文。</span></label><div class="settings-actions"><button class="btn ghost" onclick="connectWorkspaceGmail()">Connect Gmail (read only)</button><button class="btn ghost" onclick="syncWorkspaceGmail()">Refresh mail</button><button class="btn ghost" onclick="disconnectWorkspaceGmail()">Disconnect Gmail</button><button class="btn ghost" onclick="logoutWorkspaceBackend()">Sign out</button></div><p class="small">自动刷新仅在网页打开时运行。Google 的授权页面会展示实际读取权限；尚未配置后端时这些连接功能不可用。</p>`);
   };
   const originalConnectionDialog=window.openWorkspaceConnection;
-  window.openWorkspaceConnection=function(){originalConnectionDialog();const help=document.querySelector('#modalContent p.small');if(help)help.textContent='私人服务器负责 DeepSeek 和 Gmail。API Key 只保存在服务器环境变量中；下方显示实际授权和同步状态。';updateConnectionLabel();checkWorkspaceConnection(false);};
+  window.openWorkspaceConnection=function(){originalConnectionDialog();const help=document.querySelector('#modalContent p.small');if(help)help.textContent='私人服务器负责 DeepSeek 和 Gmail。API Key 只保存在服务器环境变量中；Gmail 刷新凭证经加密后保存在 HttpOnly 安全凭证中，可在部署或重启后自动恢复。';updateConnectionLabel();checkWorkspaceConnection(false);};
   window.saveWorkspaceConnection = async function () {
     try {
       const value = document.getElementById('workspaceBackend').value.trim().replace(/\/$/, '');
