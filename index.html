@@ -289,7 +289,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
 
     <section id="mail" class="page">
       <h2 class="page-title">Mail · Action Center</h2>
-      <div class="connection-bar"><span class="connection-dot"></span><div><b>Gmail not connected</b><div class="small" id="gmailAccount">Connect Gmail through your private backend</div></div><span class="badge good" id="lastGmailSync">Not connected</span><button class="btn ghost" style="margin-left:auto" onclick="showSyncInfo()">Sync details</button></div>
+      <div class="connection-bar"><span class="connection-dot" id="gmailConnectionDot"></span><div><b id="gmailConnectionTitle">正在检查 Gmail 连接…</b><div class="small" id="gmailAccount">尚未检查服务器授权状态</div></div><span class="badge" id="lastGmailSync">尚未同步</span><button class="btn ghost" style="margin-left:auto" onclick="showSyncInfo()">Sync details</button></div>
       <div class="toolbar"><button class="btn" onclick="gmailCatchUp()">Catch me up ✦</button><span class="badge warn" id="gmailActionBadge">1 needs review</span></div>
       <div class="important-mail-summary" id="importantMailSummary"></div>
       <div class="mail-layout">
@@ -498,8 +498,15 @@ function gmailUrl(value){return /^https:\/\/mail\.google\.com\//.test(value||'')
 function tagClass(tag){return tag==='Action required'?'danger':tag==='Admin'?'warn':tag==='FYI'?'good':''}
 function priorityClass(priority){return 'priority-'+String(priority||'Low').toLowerCase()}
 function renderGmailSnapshot(){
-  document.getElementById('gmailAccount').textContent=gmailSnapshot.account+' · '+gmailSnapshot.inboxUnread+' unread in recent snapshot';
-  document.getElementById('lastGmailSync').textContent=gmailSnapshot.lastSync;
+  const phase=gmailSnapshot.connectionPhase||'checking',labels={checking:'正在检查 Gmail 连接…',unconfigured:'Gmail 尚未配置',login:'请先登录工作台',authorized:'Gmail 已授权 · 尚未同步',syncing:'Gmail 正在同步…',synced:'Gmail 已连接 · 已同步',reauthorize:'Gmail 需要重新授权',error:'Gmail 连接检查失败',syncError:'Gmail 同步失败'};
+  document.getElementById('gmailConnectionTitle').textContent=labels[phase]||labels.checking;
+  const lastDate=new Date(gmailSnapshot.lastSync),hasSnapshot=Number.isFinite(lastDate.getTime());
+  const accountText=hasSnapshot?gmailSnapshot.account+' · '+gmailSnapshot.inboxUnread+' 未读（最近快照）':'尚无邮件快照；0 不代表收件箱为空';
+  document.getElementById('gmailAccount').textContent=gmailSnapshot.connectionError||accountText;
+  const badge=document.getElementById('lastGmailSync');
+  badge.textContent=hasSnapshot?(phase==='synced'?'同步于 ':'旧快照 · ')+lastDate.toLocaleString('zh-HK',{timeZone:'Asia/Hong_Kong',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+' 香港时间':phase==='authorized'?'等待同步':phase==='syncing'?'同步中':'尚未同步';
+  badge.className='badge '+(phase==='synced'?'good':['reauthorize','error','syncError'].includes(phase)?'warn':'');
+  document.getElementById('gmailConnectionDot').style.background=phase==='synced'?'var(--good)':phase==='syncing'||phase==='checking'?'var(--accent)':'#df8a22';
   const actionCount=mails.filter(m=>m.tag==='Action required').length;
   document.getElementById('gmailActionBadge').textContent=actionCount+' needs review';
   document.getElementById('mailActionCount').textContent=actionCount;
@@ -507,7 +514,7 @@ function renderGmailSnapshot(){
   const list=document.getElementById('gmailMailList');
   list.innerHTML=mails.map((m,i)=>`<div class="mail-row ${i===0?'active':''}" onclick="showMail(this,${i})"><div class="mail-row-top"><b>${m.unread?'<span class="unread-mark"></span>':''}${escapeText(m.sender)}</b><span><span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span> <span class="mail-time">${escapeText(m.received)}</span></span></div><div>${escapeText(m.title)}</div><div class="small">AI: ${escapeText(m.summary)}</div></div>`).join('');
   document.getElementById('importantMailSummary').innerHTML=mails.slice(0,3).map((m,i)=>`<div class="important-mail-card" onclick="selectImportantMail(${i})"><span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span><b>${escapeText(m.title)}</b><p>${escapeText(m.sender)} · ${escapeText(m.summary)}</p></div>`).join('');
-  if(mails.length)showMail(list.querySelector('.mail-row'),0);else document.getElementById('mailDetail').innerHTML='<p class="small">No mailbox is connected. Open AI & Gmail settings to configure your backend.</p>';
+  if(mails.length)showMail(list.querySelector('.mail-row'),0);else document.getElementById('mailDetail').innerHTML='<p class="small">'+escapeText(phase==='synced'?'已成功同步，最近 7 天范围内暂无符合条件的邮件。':phase==='authorized'?'Gmail 已授权，点击 Refresh mail 同步邮件。':phase==='syncing'?'正在读取邮件摘要，请稍候。':phase==='reauthorize'?'服务器当前没有可用授权。请打开 AI & Gmail settings 重新连接。':gmailSnapshot.connectionError||'正在检查连接，尚未读取邮件。')+'</p>';
 }
 function selectImportantMail(i){go('mail');renderGmailSnapshot();const el=document.querySelectorAll('#gmailMailList .mail-row')[i];if(el)showMail(el,i)}
 function showMail(el,i){

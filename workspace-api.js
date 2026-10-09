@@ -5,18 +5,36 @@
   const privateSite=window.JING_PRIVATE_SITE===true;
   if(privateSite)config.backendUrl=window.location.origin;
   let busy = false, status = null;
+  let mailSyncing=false,checkingConnection=false;
+  function mailPhase(phase,error=''){gmailSnapshot.connectionPhase=phase;gmailSnapshot.connectionError=error;renderGmailSnapshot();updateConnectionLabel();}
+  function updateConnectionLabel(){const node=document.getElementById('connectionState');if(!node)return;node.textContent=status?`后端${status.authenticated?'已登录':'未登录'} · DeepSeek ${status.aiConfigured?'已配置':'待配置'} · ${document.getElementById('gmailConnectionTitle')?.textContent||'Gmail 状态待检查'}${gmailSnapshot.connectionError?' · '+gmailSnapshot.connectionError:''}`:'尚未确认服务器连接 · '+(gmailSnapshot.connectionError||'正在检查');}
+  window.checkWorkspaceConnection=async function(autoSync=false){
+    if(checkingConnection||mailSyncing)return;checkingConnection=true;const previousPhase=gmailSnapshot.connectionPhase,previousError=gmailSnapshot.connectionError;
+    try{
+      if(!base()){status=null;mailPhase('unconfigured','请先设置私人后端地址。');return;}
+      if(!mailSyncing)mailPhase('checking');
+      status=await request('/api/status');
+      if(!status.authenticated)mailPhase('login','登录服务器后才能检查 Gmail 授权。');
+      else if(!status.gmailConfigured)mailPhase('unconfigured','服务器尚未配置 Google OAuth。');
+      else if(!status.gmailConnected)mailPhase('reauthorize','服务器没有可用的 Gmail 授权；部署或重启后可能需要重新连接。');
+      else {mailPhase(previousPhase==='syncError'?'syncError':previousPhase!=='reauthorize'&&Number.isFinite(new Date(gmailSnapshot.lastSync).getTime())?'synced':'authorized',previousPhase==='syncError'?previousError:'');if(autoSync)await syncWorkspaceGmail(true);}
+    }catch(e){mailPhase(e.httpStatus===401?'login':'error',e.message);}
+    finally{checkingConnection=false;updateConnectionLabel();}
+  };
   function base() { return String(config.backendUrl || '').replace(/\/$/, ''); }
   async function request(path, body) {
     if (!base()) throw new Error('请先设置后端地址。');
     const response = await fetch(base() + path, { method: body === undefined ? 'GET' : 'POST', credentials: 'include', headers: body === undefined ? {} : {'Content-Type':'application/json'}, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(60000) });
     const data = await response.json().catch(() => ({}));
     if(privateSite&&response.status===401)window.location.replace('/login');
-    if (!response.ok) throw new Error(data.error || `连接失败 (${response.status})`);
+    if (!response.ok) {const error=new Error(data.error || `连接失败 (${response.status})`);error.httpStatus=response.status;throw error;}
     return data;
   }
   window.openWorkspaceConnection = function () {
     openModal(`<h2>AI & Gmail settings</h2><p class="small">GitHub Pages hosts this website. A private backend handles DeepSeek and Gmail. API keys belong in server environment variables.</p><div class="field"><label>Backend URL</label><input class="form-input" id="workspaceBackend" type="url" value="${escapeText(base())}" placeholder="https://your-private-backend.example.com"></div><div class="settings-actions"><button class="btn" onclick="saveWorkspaceConnection()">Save & check connection</button></div><div id="connectionState" class="course-note">${status ? escapeText(status.authenticated ? '已登录私人后端' : '请登录私人后端') : '未检测连接'}</div><div class="field"><label>Private backend password (not saved in this browser)</label><input class="form-input" id="backendPassword" type="password" autocomplete="off"></div><button class="btn ghost" onclick="loginWorkspaceBackend()">Sign in to backend</button><label class="check-row"><input type="checkbox" id="gmailAiConsent" ${config.gmailAiConsent ? 'checked' : ''} onchange="setGmailAiConsent(this.checked)"><span>允许将最近 7 天邮件的发件人、主题和已过滤的简短摘要发送到我的后端及 DeepSeek，用于分析待办。不会发送附件或完整正文。</span></label><div class="settings-actions"><button class="btn ghost" onclick="connectWorkspaceGmail()">Connect Gmail (read only)</button><button class="btn ghost" onclick="syncWorkspaceGmail()">Refresh mail</button><button class="btn ghost" onclick="disconnectWorkspaceGmail()">Disconnect Gmail</button><button class="btn ghost" onclick="logoutWorkspaceBackend()">Sign out</button></div><p class="small">自动刷新仅在网页打开时运行。Google 的授权页面会展示实际读取权限；尚未配置后端时这些连接功能不可用。</p>`);
   };
+  const originalConnectionDialog=window.openWorkspaceConnection;
+  window.openWorkspaceConnection=function(){originalConnectionDialog();const help=document.querySelector('#modalContent p.small');if(help)help.textContent='私人服务器负责 DeepSeek 和 Gmail。API Key 只保存在服务器环境变量中；下方显示实际授权和同步状态。';updateConnectionLabel();checkWorkspaceConnection(false);};
   window.saveWorkspaceConnection = async function () {
     try {
       const value = document.getElementById('workspaceBackend').value.trim().replace(/\/$/, '');
@@ -25,16 +43,20 @@
       if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && ['localhost','127.0.0.1'].includes(parsed.hostname))) throw new Error('请使用 HTTPS 后端地址，本地测试可用 localhost。');
       if(parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== '/') throw new Error('请输入不含密钥、参数或路径的后端根地址。');
       config.backendUrl = value; localStorage.setItem(key, JSON.stringify(config));
-      status = await request('/api/status'); openWorkspaceConnection();
-      document.getElementById('connectionState').textContent = `后端已连接 · DeepSeek ${status.aiConfigured ? '已配置' : '待配置'} · Gmail ${status.gmailConnected ? '已授权' : '未授权'}`;
+      await checkWorkspaceConnection(false);
     } catch(e) { toast(e.message); }
   };
-  window.loginWorkspaceBackend = async function () { try { const input = document.getElementById('backendPassword'); const password = input.value; input.value = ''; await request('/api/login', {password}); status = await request('/api/status'); openWorkspaceConnection(); toast('后端已登录'); } catch(e) { toast(e.message); } };
+  window.loginWorkspaceBackend = async function () { try { const input = document.getElementById('backendPassword'); const password = input.value; input.value = ''; await request('/api/login', {password}); await checkWorkspaceConnection(true); toast('后端已登录'); } catch(e) { toast(e.message); } };
   window.setGmailAiConsent = function(value) { config.gmailAiConsent = Boolean(value); localStorage.setItem(key,JSON.stringify(config)); };
-  window.connectWorkspaceGmail = async function () { try { const s = await request('/api/status'); if (!s.authenticated) throw new Error('请先登录私人后端。'); if (!s.gmailConfigured) throw new Error('服务器尚未配置 Google OAuth。'); window.open(base() + '/auth/google/start', '_blank', 'noopener'); } catch(e) { toast(e.message); } };
+  window.connectWorkspaceGmail = async function () { try { const s = await request('/api/status'); if (!s.authenticated) throw new Error('请先登录私人后端。'); if (!s.gmailConfigured) throw new Error('服务器尚未配置 Google OAuth。'); window.location.assign(base() + '/auth/google/start'); } catch(e) { toast(e.message); } };
   function emptyMail() { mails.splice(0); Object.assign(gmailSnapshot,{account:'Not connected',lastSync:'Not connected',inboxUnread:0}); renderGmailSnapshot(); renderDashboard(); }
-  window.syncWorkspaceGmail = async function(quiet=false) { try { const data = await request('/api/gmail/snapshot'); mails.splice(0,mails.length,...data.emails); Object.assign(gmailSnapshot,{account:data.account,lastSync:data.lastSync,inboxUnread:data.inboxUnread}); renderGmailSnapshot(); renderDashboard(); if(!quiet) toast(`${data.emails.length} 个邮件会话已刷新`); } catch(e) { document.getElementById('lastGmailSync').textContent='同步失败 · 当前显示未刷新'; if(!quiet)toast(e.message); } };
-  window.disconnectWorkspaceGmail = async function () { try { await request('/api/gmail/disconnect',{}); emptyMail(); toast('已断开本工作台的 Gmail 连接'); } catch(e) { toast(e.message); } };
+  window.syncWorkspaceGmail = async function(quiet=false) {
+    if(mailSyncing)return;mailSyncing=true;mailPhase('syncing');
+    try {const data=await request('/api/gmail/snapshot');if(!Array.isArray(data.emails)||!Number.isFinite(new Date(data.lastSync).getTime()))throw new Error('服务器返回的邮件快照格式不正确。');mails.splice(0,mails.length,...data.emails);Object.assign(gmailSnapshot,{account:data.account,lastSync:data.lastSync,inboxUnread:data.inboxUnread});if(status)status.gmailConnected=true;mailPhase('synced');renderDashboard();if(!quiet)toast(`${data.emails.length} 个邮件会话已刷新`);}
+    catch(e){mailPhase(e.httpStatus===409?'reauthorize':e.httpStatus===401?'login':'syncError',e.name==='TimeoutError'?'同步超时，请稍后重试；这不代表授权已断开。':e.name==='TypeError'?'无法连接服务器，请检查网络或稍后重试。':e.message);if(!quiet)toast(gmailSnapshot.connectionError);}
+    finally{mailSyncing=false;}
+  };
+  window.disconnectWorkspaceGmail = async function () { try { await request('/api/gmail/disconnect',{}); emptyMail();if(status)status.gmailConnected=false;mailPhase('reauthorize','你已主动断开 Gmail。');toast('已断开本工作台的 Gmail 连接'); } catch(e) { toast(e.message); } };
   window.logoutWorkspaceBackend = async function () { try { await request('/api/logout',{}); status=null; emptyMail(); if(privateSite)window.location.replace('/login');else toast('已退出后端'); } catch(e) { toast(e.message); } };
   showSyncInfo = openWorkspaceConnection;
   const localAnswer = workspaceAnswer;
@@ -76,5 +98,6 @@
   if(privateSite){const logout=document.createElement('button');logout.className='nav-item';logout.textContent='Sign out · 退出工作台';logout.onclick=logoutWorkspaceBackend;document.getElementById('settingsBtn').after(logout);}
   const notice=document.createElement('div'); notice.className='small';notice.style.cssText='padding:8px 0;color:var(--muted)';notice.textContent='Published edition · Courses, assignment examples and market figures are demonstrations. Upload your files and create your own tasks. Gmail and cloud AI require connection.';document.getElementById('dashboard').prepend(notice);
   const settings=document.createElement('button'); settings.className='btn ghost';settings.textContent='AI & Gmail settings';settings.onclick=openWorkspaceConnection;document.querySelector('#mail .toolbar').appendChild(settings);
-  setInterval(()=>{if(base()&&document.visibilityState==='visible')syncWorkspaceGmail(true);},3600000);
+  checkWorkspaceConnection(true);
+  setInterval(()=>{if(base()&&document.visibilityState==='visible')checkWorkspaceConnection(true);},3600000);
 })();
