@@ -227,6 +227,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
 .rescue-hero{padding:18px;border-radius:17px;background:linear-gradient(135deg,#f4f1ff,#eef8f2);margin:12px 0 16px}.rescue-hero h2{margin:0 0 7px;font-size:26px}.rescue-hero p{margin:0;color:#555b68}.rescue-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.rescue-card{position:relative;border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff;min-height:170px;display:flex;flex-direction:column;align-items:flex-start}.rescue-card h3{margin:11px 0 5px}.rescue-card p{margin:0 0 14px;color:var(--muted);font-size:12px;line-height:1.5}.rescue-card .btn{margin-top:auto}.rescue-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#ece9ff;color:#6656c6}.rescue-icon.photo{background:#e5f4ec;color:#2c8864}.rescue-icon.notes{background:#fff1dc;color:#bd7827}.rescue-icon.audio{background:#edf1f6;color:#718094}.rescue-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.coming-badge{position:absolute;right:12px;top:12px;padding:4px 8px;border-radius:99px;background:#eef0f4;color:#727986;font-size:10px;font-weight:800;text-transform:uppercase}.btn[disabled]{opacity:.55;cursor:not-allowed}
 @media(max-width:700px){.rescue-grid{grid-template-columns:1fr}.rescue-card{min-height:150px}}
 </style>
+<link rel="stylesheet" href="papers.css">
 </head>
 <body>
 <div class="app">
@@ -294,7 +295,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
       <div class="important-mail-summary" id="importantMailSummary"></div>
       <div class="mail-layout">
         <div class="card mail-cats">
-          <button class="pill active">Action Required</button><button class="pill">Deadline</button><button class="pill">Academic</button><button class="pill">Admin</button><button class="pill">FYI</button>
+          <button class="pill active">Action Required</button><button class="pill">Deadline</button><button class="pill">Academic</button><button class="pill">Admin</button><button class="pill">FYI</button><p class="small">Academic：Moodle 与课程。Admin：行政、费用、奖学金。FYI：活动及一般资讯。分类只在工作台生效，不修改 Gmail 标签。</p>
         </div>
         <div class="card" id="gmailMailList"></div>
         <div class="card mail-detail" id="mailDetail">
@@ -331,16 +332,15 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
 
     <section id="papers" class="page">
       <h2 class="page-title">Papers · Research Reading</h2>
-      <div class="toolbar"><button class="btn" onclick="document.getElementById('paperFile').click()">+ Upload papers</button><input type="file" id="paperFile" hidden multiple accept=".pdf,.doc,.docx,.epub,.txt" onchange="importPaper(event)"><button class="btn ghost" onclick="openPaperCompare()">Compare papers</button><button class="btn ghost" onclick="openLiteratureMatrix()">Literature matrix</button></div>
+      <div class="toolbar"><button class="btn" onclick="document.getElementById('paperFile').click()">+ Upload PDF</button><input type="file" id="paperFile" hidden multiple accept=".pdf,application/pdf" onchange="importPaper(event)"><button class="btn ghost" onclick="openPaperCompare()">Compare papers</button><button class="btn ghost" onclick="openLiteratureMatrix()">Literature matrix</button></div>
       <div class="grid2">
         <div class="card">
           <div class="section-title"><h3>Reading Queue</h3><span class="badge" id="paperCountBadge">4 papers</span></div>
           <div id="papersQueue"></div>
         </div>
         <div class="card">
-          <div class="section-title"><h3>Saved Evidence</h3><span class="link">27 items</span></div>
-          <div class="paper-row"><b>Claim</b><p>AI is commonly used for idea generation and summarization.</p><span class="badge">p.8</span> <span class="badge good">EDS6019 Essay</span></div>
-          <div class="paper-row"><b>Method</b><p>Mixed-method design combining survey and interviews.</p><span class="badge">p.12</span></div>
+          <div class="section-title"><h3>Saved Evidence</h3><span id="paperEvidenceCount" class="badge">0</span></div>
+          <div id="paperEvidenceList"></div>
         </div>
       </div>
     </section>
@@ -497,6 +497,25 @@ function escapeText(value){return String(value||'').replace(/&/g,'&amp;').replac
 function gmailUrl(value){return /^https:\/\/mail\.google\.com\//.test(value||'')?value:'#'}
 function tagClass(tag){return tag==='Action required'?'danger':tag==='Admin'?'warn':tag==='FYI'?'good':''}
 function priorityClass(priority){return 'priority-'+String(priority||'Low').toLowerCase()}
+function classifyWorkspaceMail(mail){
+  const text=[mail.sender,mail.title,mail.summary].join(' '),courseText=[mail.title,mail.summary].join(' ');
+  const patterns={EDS6001:/\bEDS\s*6001\b|research methods for interdisciplinary studies|跨学科研究方法|跨學科研究方法/i,EDS6019:/\bEDS\s*6019\b|AI for teaching (?:and|&) learning|人工智能教学与学习|人工智能教學與學習/i,ECE6156:/\bECE\s*6156\b|language and literacy development in children|儿童语言与读写|兒童語言與讀寫/i,CUI6078:/\bCUI\s*6078\b|curriculum leadership|课程领导|課程領導/i};
+  const courses=Object.entries(patterns).filter(([,pattern])=>pattern.test(courseText)).map(([code])=>code);
+  const moodle=/\bmoodle\b/i.test(text);
+  const courseContent=/\b(?:class activity|class worksheet|lecture slides|lecture notes|course materials|course assignment|reading week group activity|tutorial worksheet)\b|课堂活动|課堂活動|课件|課件|课程作业|課程作業|课堂笔记|課堂筆記/i.test(courseText);
+  const admin=/\b(?:scholarship|institutional fees|tuition|payment|registry|registration confirmation|student selection|commendation scheme|visa|application status|booking session|sign.in attempt)\b|奖学金|獎學金|缴费|繳費|学费|學費|評選|评选|註冊確認|注册确认/i.test(courseText);
+  const category=moodle||courses.length||courseContent?'Academic':admin?'Admin':'FYI';
+  const hasDeadline=/\b(?:deadline|due date|payment due|submission deadline|submit by|enrolment ends|enrollment ends)\b|截止|限期|提交期限/i.test(courseText);
+  return {category,courses,moodle,hasDeadline};
+}
+let currentMailCategory='Action Required';
+function renderMailCategory(){
+  const list=document.getElementById('gmailMailList');if(!list)return;
+  const filtered=mails.map((m,i)=>({m,i,classification:classifyWorkspaceMail(m)})).filter(x=>currentMailCategory==='All'||(currentMailCategory==='Action Required'?x.m.tag==='Action required':currentMailCategory==='Deadline'?x.classification.hasDeadline:x.classification.category===currentMailCategory));
+  list.innerHTML=filtered.length?filtered.map((x,j)=>`<div class="mail-row ${j===0?'active':''}" data-mail-index="${x.i}" onclick="showMail(this,${x.i})"><div class="mail-row-top"><b>${x.m.unread?'<span class="unread-mark"></span>':''}${escapeText(x.m.sender)}</b><span class="priority-badge ${priorityClass(x.m.priority)}">${escapeText(x.m.priority||'Low')}</span></div><div>${escapeText(x.m.title)}</div><div class="small">${escapeText(x.classification.category)}${x.classification.courses.length?' · '+escapeText(x.classification.courses.join(' / ')):x.classification.moodle?' · Moodle':''} · ${escapeText(x.m.received)}</div><div class="small">邮件摘要：${escapeText(x.m.summary)}</div></div>`).join(''):'<div class="empty-state">此分类暂无邮件。</div>';
+  if(filtered.length)showMail(list.querySelector('.mail-row'),filtered[0].i);
+  else if(mails.length)document.getElementById('mailDetail').innerHTML='<p class="small">此分类暂无邮件。可切换 Academic、Admin 或 FYI 查看其他内容。</p>';
+}
 function renderGmailSnapshot(){
   const phase=gmailSnapshot.connectionPhase||'checking',labels={checking:'正在检查 Gmail 连接…',unconfigured:'Gmail 尚未配置',login:'请先登录工作台',authorized:'Gmail 已授权 · 尚未同步',syncing:'Gmail 正在同步…',synced:'Gmail 已连接 · 已同步',reauthorize:'Gmail 需要重新授权',error:'Gmail 连接检查失败',syncError:'Gmail 同步失败'};
   document.getElementById('gmailConnectionTitle').textContent=labels[phase]||labels.checking;
@@ -512,15 +531,15 @@ function renderGmailSnapshot(){
   document.getElementById('mailActionCount').textContent=actionCount;
   document.getElementById('sideMailCount').textContent=actionCount;
   const list=document.getElementById('gmailMailList');
-  list.innerHTML=mails.map((m,i)=>`<div class="mail-row ${i===0?'active':''}" onclick="showMail(this,${i})"><div class="mail-row-top"><b>${m.unread?'<span class="unread-mark"></span>':''}${escapeText(m.sender)}</b><span><span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span> <span class="mail-time">${escapeText(m.received)}</span></span></div><div>${escapeText(m.title)}</div><div class="small">AI: ${escapeText(m.summary)}</div></div>`).join('');
+  if(!mails.length)list.innerHTML='';
   document.getElementById('importantMailSummary').innerHTML=mails.slice(0,3).map((m,i)=>`<div class="important-mail-card" onclick="selectImportantMail(${i})"><span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span><b>${escapeText(m.title)}</b><p>${escapeText(m.sender)} · ${escapeText(m.summary)}</p></div>`).join('');
-  if(mails.length)showMail(list.querySelector('.mail-row'),0);else document.getElementById('mailDetail').innerHTML='<p class="small">'+escapeText(phase==='synced'?'已成功同步，最近 7 天范围内暂无符合条件的邮件。':phase==='authorized'?'Gmail 已授权，点击 Refresh mail 同步邮件。':phase==='syncing'?'正在读取邮件摘要，请稍候。':phase==='reauthorize'?'服务器当前没有可用授权。请打开 AI & Gmail settings 重新连接。':gmailSnapshot.connectionError||'正在检查连接，尚未读取邮件。')+'</p>';
+  if(mails.length)renderMailCategory();else document.getElementById('mailDetail').innerHTML='<p class="small">'+escapeText(phase==='synced'?'已成功同步，最近 7 天范围内暂无符合条件的邮件。':phase==='authorized'?'Gmail 已授权，点击 Refresh mail 同步邮件。':phase==='syncing'?'正在读取邮件摘要，请稍候。':phase==='reauthorize'?'服务器当前没有可用授权。请打开 AI & Gmail settings 重新连接。':gmailSnapshot.connectionError||'正在检查连接，尚未读取邮件。')+'</p>';
 }
-function selectImportantMail(i){go('mail');renderGmailSnapshot();const el=document.querySelectorAll('#gmailMailList .mail-row')[i];if(el)showMail(el,i)}
+function selectImportantMail(i){if(!mails[i])return;go('mail');currentMailCategory=classifyWorkspaceMail(mails[i]).category;document.querySelectorAll('.mail-cats .pill').forEach(b=>b.classList.toggle('active',b.textContent.trim()===currentMailCategory));renderGmailSnapshot();const el=document.querySelector('#gmailMailList [data-mail-index="'+i+'"]');if(el)showMail(el,i)}
 function showMail(el,i){
   document.querySelectorAll('.mail-row').forEach(x=>x.classList.remove('active')); el.classList.add('active');
-  const m=mails[i];
-  document.getElementById('mailDetail').innerHTML=`<span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span> <span class="badge ${tagClass(m.tag)}">${escapeText(m.tag)}</span><h3>${escapeText(m.title)}</h3><div class="ai-summary"><b>What this email means</b><p>${escapeText(m.summary)}</p><b>Suggested action</b><p>${escapeText(m.action)}</p></div><p class="small">From: ${escapeText(m.sender)} · ${escapeText(m.received)}</p><div class="toolbar"><a class="btn" style="text-decoration:none" href="${gmailUrl(m.url)}" target="_blank" rel="noopener">Open in Gmail</a><button class="btn ghost" onclick="createMailTask(${i})">Create task</button></div>`;
+  const m=mails[i],classification=classifyWorkspaceMail(m);
+  document.getElementById('mailDetail').innerHTML=`<span class="priority-badge ${priorityClass(m.priority)}">${escapeText(m.priority||'Low')}</span> <span class="badge ${tagClass(m.tag)}">${escapeText(m.tag)}</span> <span class="badge">${escapeText(classification.category)}${classification.courses.length?' · '+escapeText(classification.courses.join(' / ')):classification.moodle?' · Moodle':''}</span><h3>${escapeText(m.title)}</h3><div class="ai-summary"><b>What this email means</b><p>${escapeText(m.summary)}</p><b>Suggested action</b><p>${escapeText(m.action)}</p></div><p class="small">From: ${escapeText(m.sender)} · ${escapeText(m.received)}</p><div class="toolbar"><a class="btn" style="text-decoration:none" href="${gmailUrl(m.url)}" target="_blank" rel="noopener">Open in Gmail</a><button class="btn ghost" onclick="createMailTask(${i})">Create task</button></div>`;
 }
 function gmailCatchUp(){
   const actions=mails.filter(m=>m.tag==='Action required');
@@ -739,16 +758,17 @@ function saveQuickTask(){const title=document.getElementById('quickTaskTitle').v
 function openTodaySummary(){const next=workspaceState.events.slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];openModal(`<h2>Today at a glance</h2><div class="ai-summary"><b>${dashboardFocusItems.length-(workspaceState.dashboardFocus||[]).filter(Boolean).length} focus items remaining</b><p>${mails.filter(m=>m.tag==='Action required').length} important email needs review. Your closest assignment is EDS6001 Research Proposal.</p></div><div class="paper-row"><b>Next scheduled item</b><div class="small">${next?escapeText(next.time+' '+next.title+(next.location?' · '+next.location:'')):'No event scheduled'}</div></div><button class="btn" onclick="closeModal();openStudyPlan()">Plan the day</button>`)}
 function askFromDashboard(){const input=document.getElementById('dashboardAsk'),q=input.value.trim();if(!q)return;const answer=workspaceAnswer(q);workspaceState.chat.push({role:'user',text:q},{role:'ai',text:answer});saveWorkspaceState();input.value='';openAssistant()}
 
-document.querySelectorAll('.mail-cats .pill').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.mail-cats .pill').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const label=btn.textContent.trim();const filtered=label==='Deadline'?[]:mails.map((m,i)=>({m,i})).filter(x=>label==='Action Required'?x.m.tag==='Action required':x.m.tag===label);const list=document.getElementById('gmailMailList');list.innerHTML=filtered.length?filtered.map((x,j)=>`<div class="mail-row ${j===0?'active':''}" onclick="showMail(this,${x.i})"><div class="mail-row-top"><b>${escapeText(x.m.sender)}</b><span><span class="priority-badge ${priorityClass(x.m.priority)}">${escapeText(x.m.priority||'Low')}</span> <span class="mail-time">${escapeText(x.m.received)}</span></span></div><div>${escapeText(x.m.title)}</div><div class="small">AI: ${escapeText(x.m.summary)}</div></div>`).join(''):'<div class="empty-state">No messages in this category.</div>';if(filtered.length)showMail(list.querySelector('.mail-row'),filtered[0].i)});
+document.querySelectorAll('.mail-cats .pill').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.mail-cats .pill').forEach(x=>x.classList.remove('active'));btn.classList.add('active');currentMailCategory=btn.textContent.trim();renderMailCategory()});
 
 renderAssignments();renderPapers();renderCalendar();renderDashboard();
 </script>
-<script src="pdf.worker.classic.js"></script>
-<script src="pdf.classic.js"></script>
+<script type="module" src="pdf.worker.classic.js"></script>
+<script type="module" src="pdf.classic.js"></script>
 <script src="jszip.min.js"></script>
 
 <script src="course-engine.js"></script>
 <script src="dashboard-engine.js"></script>
 <script src="workspace-api.js"></script>
+<script type="module" src="papers.js"></script>
 </body>
 </html>
