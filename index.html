@@ -166,10 +166,17 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
 .empty-state{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:16px}
 .save-note{font-size:12px;color:var(--good);min-height:16px;margin-top:6px}
 .event{cursor:pointer}
-.assistant-thread{display:grid;gap:10px;max-height:300px;overflow:auto;margin:12px 0}
+.assistant-thread{display:grid;gap:14px;max-height:min(55vh,560px);overflow:auto;margin:12px 0;overscroll-behavior:contain}
 .assistant-msg{padding:11px 13px;border-radius:14px;max-width:88%}
 .assistant-msg.user{background:var(--accent);color:#fff;margin-left:auto}
-.assistant-msg.ai{background:var(--soft);color:var(--ink)}
+.assistant-msg.ai{background:var(--soft);color:var(--ink);max-width:100%;line-height:1.65;font-size:15px;overflow-wrap:anywhere}
+.assistant-msg.ai h4{font-size:16px;margin:16px 0 8px;line-height:1.5}
+.assistant-msg.ai h4:first-child{margin-top:0}
+.assistant-msg.ai p{margin:5px 0}
+.assistant-gap{height:9px}
+.assistant-list-row{padding:3px 0}
+.assistant-msg.ai hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.assistant-mail-link{display:inline-block;color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:3px;padding:3px 0}
 .mini-chart{height:150px;display:flex;align-items:flex-end;gap:8px;padding:18px;border-radius:16px;background:linear-gradient(180deg,var(--soft),#fff)}
 .mini-chart span{flex:1;max-width:24px;background:linear-gradient(180deg,var(--accent2),var(--accent));border-radius:7px 7px 2px 2px;min-height:12px}
 .status-toast{position:fixed;right:24px;bottom:24px;background:var(--dark);color:#fff;padding:12px 16px;border-radius:13px;box-shadow:var(--shadow);z-index:50;opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}

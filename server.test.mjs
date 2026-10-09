@@ -1,7 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import {handle,filterMessage} from './server.mjs';
+import {handle,filterMessage,resolveMailReferences,assistantInstructions} from './server.mjs';
+import {readFile} from 'node:fs/promises';
+import vm from 'node:vm';
+
+test('mail citations resolve only to snapshot originals',()=>{
+  const emails=[{url:'https://mail.google.com/mail/u/0/#all/abc'},{url:'javascript:alert(1)'}];
+  assert.equal(resolveMailReferences('Source: [M1]',emails),'Source: [打开原邮件](https://mail.google.com/mail/u/0/#all/abc)');
+  assert.doesNotMatch(resolveMailReferences('[M2] [M99]',emails),/javascript:|\]\(/);
+  assert.match(assistantInstructions,/expired/);
+});
+test('assistant formats paragraphs and original links without executing model HTML',async()=>{
+  const source=await readFile(new URL('./workspace-api.js',import.meta.url),'utf8');
+  const fn=source.slice(source.indexOf('  function renderAssistantText('),source.indexOf('  openAssistant = function'));
+  const escapeText=value=>String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const render=vm.runInNewContext(fn+'\nrenderAssistantText',{escapeText,URL});
+  const output=render('### 1. High\n**行动：** 检查\n\n[打开原邮件](https://mail.google.com/mail/u/0/#all/abc)\n<script>alert(1)</script>');
+  assert.match(output,/<h4>1. High<\/h4>/);assert.match(output,/<strong>行动：<\/strong>/);
+  assert.match(output,/target="_blank" rel="noopener noreferrer"/);assert.match(output,/assistant-gap/);
+  assert.doesNotMatch(output,/<script>/);assert.doesNotMatch(render('[bad](javascript:alert(1))'),/<a /);
+  assert.doesNotMatch(render('[bad](https://mail.google.com.evil.example/mail/x)'),/<a /);
+});
 
 test('private API rejects unauthenticated access, then checks server configuration after login',async()=>{
   const server=http.createServer((req,res)=>handle(req,res));

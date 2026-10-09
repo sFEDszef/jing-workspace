@@ -38,9 +38,22 @@
   window.logoutWorkspaceBackend = async function () { try { await request('/api/logout',{}); status=null; emptyMail(); if(privateSite)window.location.replace('/login');else toast('已退出后端'); } catch(e) { toast(e.message); } };
   showSyncInfo = openWorkspaceConnection;
   const localAnswer = workspaceAnswer;
+  // Escape before formatting: model output must never become executable HTML.
+  function renderAssistantText(value) {
+    const inline = text => escapeText(text).replace(/\[([^\]\n]+)\]\((https:\/\/mail\.google\.com\/mail\/[^\s<>]+)\)/g, (match,label,url) => {
+      try { const parsed=new URL(url.replace(/&amp;/g,'&')); if(parsed.hostname!=='mail.google.com'||parsed.username||parsed.password)return label; return `<a class="assistant-mail-link" href="${escapeText(parsed.href)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`; } catch { return label; }
+    }).replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/`([^`\n]+)`/g,'<code>$1</code>');
+    return String(value||'').split(/\r?\n/).map(line=>{
+      if(!line.trim())return '<div class="assistant-gap"></div>';
+      if(/^\s*---+\s*$/.test(line))return '<hr>';
+      const heading=line.match(/^#{1,6}\s+(.+)/); if(heading)return `<h4>${inline(heading[1])}</h4>`;
+      const item=line.match(/^\s*(?:[-*]|\d+[.)])\s+(.+)/); if(item)return `<div class="assistant-list-row">${inline(line.trim())}</div>`;
+      return `<p>${inline(line)}</p>`;
+    }).join('');
+  }
   openAssistant = function () {
     const history = workspaceState.chat.slice(-10);
-    openModal(`<h2>Ask a Question · Jing Workspace</h2><p class="small">${base() ? '通过你的私人后端调用模型。邮件仅在勾选分析选项后读取。' : '本地规则模式 · 尚未连接 DeepSeek，可查看本地任务状态。'}</p><button class="btn ghost" onclick="openWorkspaceConnection()">AI & Gmail settings</button><div class="assistant-thread" id="assistantThread">${history.map(m=>`<div class="assistant-msg ${m.role==='user'?'user':'ai'}">${escapeText(m.text)}</div>`).join('')}</div><textarea id="assistantQuestion" placeholder="我最近有哪些需要处理的邮件和作业？" ${busy?'disabled':''}></textarea><label class="check-row"><input type="checkbox" id="askIncludeGmail" ${config.gmailAiConsent?'checked':''} ${busy?'disabled':''}><span>分析最近 7 天的 Gmail 摘要（发送至后端与 DeepSeek）</span></label><button class="btn" onclick="askWorkspace()" ${busy?'disabled':''}>${busy?'正在分析…':'Ask'}</button>`);
+    openModal(`<h2>Ask a Question · Jing Workspace</h2><p class="small">${base() ? '通过你的私人后端调用模型。邮件仅在勾选分析选项后读取。' : '本地规则模式 · 尚未连接 DeepSeek，可查看本地任务状态。'}</p><button class="btn ghost" onclick="openWorkspaceConnection()">AI & Gmail settings</button><div class="assistant-thread" id="assistantThread">${history.map(m=>`<div class="assistant-msg ${m.role==='user'?'user':'ai'}">${m.role==='user'?escapeText(m.text):renderAssistantText(m.text)}</div>`).join('')}</div><textarea id="assistantQuestion" placeholder="我最近有哪些需要处理的邮件和作业？" ${busy?'disabled':''}></textarea><label class="check-row"><input type="checkbox" id="askIncludeGmail" ${config.gmailAiConsent?'checked':''} ${busy?'disabled':''}><span>分析最近 7 天的 Gmail 摘要（发送至后端与 DeepSeek）</span></label><button class="btn" onclick="askWorkspace()" ${busy?'disabled':''}>${busy?'正在分析…':'Ask'}</button>`);
   };
   function context() {
     return { date:new Date().toISOString(), assignments:(workspaceState.customAssignments||[]).slice(0,30).map(a=>({title:a.title,course:a.course,done:a.done,dueAt:a.dueAt})), generatedAssignments:(workspaceState.generatedAssignments||[]).slice(0,20).map(a=>({title:a.title,course:a.course,source:a.source,done:a.done})), tasks:(workspaceState.miscTasks||[]).slice(0,30).map(t=>({title:t.title,done:t.done,dueAt:t.dueAt})), events:(workspaceState.events||[]).slice(0,30).map(e=>({title:e.title,date:e.date,time:e.time,end:e.end,recurring:e.recurring})), papers:(workspaceState.papers||[]).filter(p=>p.fileName||!/^p[1-4]$/.test(p.id)).slice(0,20).map(p=>({title:p.title,status:p.status,course:p.course})) };
