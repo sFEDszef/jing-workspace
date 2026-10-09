@@ -10,7 +10,7 @@ The public code excludes personal photos, real Gmail snapshots, original course 
 
 Browser files and notes are stored on the current browser origin. The online site cannot automatically access files or preferences previously saved under a local `file://` page. Keep the original local page until you have transferred the files you need.
 
-GitHub Pages deploys the static frontend from `main` / root. The backend source is provided for later deployment; GitHub Pages does not execute it. No DeepSeek or Gmail credentials are included.
+GitHub Pages is the public demo, not a password-protected deployment. The Node server now hosts the entire private workspace: unauthenticated visits redirect to `/login`, and workspace scripts/API routes are withheld until login. No DeepSeek or Gmail credentials are included. After the private site is verified, retire the old public Pages deployment.
 
 ## Ask a Question
 
@@ -24,13 +24,13 @@ Requires Node.js 22 or newer. No third-party runtime packages are required.
 
 1. Deploy `server.mjs` and `package.json` on a private server/service supporting persistent storage and Node.js. Start command: `npm start`.
 2. Configure the environment variables listed in `.env.example` in the hosting provider's secret settings. Node does not automatically read `.env`; for local development use `node --env-file=.env server.mjs` after making your own private `.env` file.
-3. Set `FRONTEND_ORIGIN=https://sfedszef.github.io` (origin only, no repository path). Set `BACKEND_PUBLIC_URL` to the public HTTPS backend URL. Set `BIND_HOST=0.0.0.0` on managed hosting.
+3. On Render, leave `FRONTEND_ORIGIN` and `BACKEND_PUBLIC_URL` unset: the server uses Render's automatic `RENDER_EXTERNAL_URL`. Set `BIND_HOST=0.0.0.0`. On another host, set both URL variables to the private website's HTTPS origin. Frontend and backend should share this origin.
 4. Set `WORKSPACE_PASSWORD` to a long unique password (at least 16 characters). Generate `TOKEN_ENCRYPTION_KEY` as a base64 random 32-byte value: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Keep both private.
 5. Set `DEEPSEEK_API_KEY`; optionally change `DEEPSEEK_MODEL` (default `deepseek-chat`).
 6. Enable Gmail API in your Google Cloud project. Create a Web Application OAuth client and configure consent/test users. Register the exact redirect URI `https://YOUR-BACKEND/auth/google/callback`. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_OWNER_EMAIL` (the one account allowed to connect).
 7. Use **Connect Gmail** and complete Google's consent yourself, then **Refresh mail**. A deployment can require third-party cookies for the cross-origin private backend session; hosting frontend and backend together under one origin avoids that limitation.
 
-OAuth refresh tokens are encrypted at rest in `.private/gmail.enc`; mount persistent private storage there. Sessions are in memory and expire after eight hours; a restart requires signing in again. Use HTTPS, a reverse proxy and network rate limiting for any internet-facing backend. This is a single-owner backend, not a multi-user service.
+OAuth refresh tokens are encrypted at rest in `.private/gmail.enc`; mount persistent private storage there. Render Free has no persistent disk, so Gmail grants do not reliably survive restarts: Gmail remains a separate future integration, not enabled by adding a DeepSeek key. Sessions have no application-level fixed expiry and no AI call-frequency limits. Sessions are in memory, so service restarts, free-tier sleep/restarts, clearing browser cookies or password changes can require signing in again. Browser cookies also have their own retention limits (up to 400 days, refreshed when the workspace is loaded). Manual Sign out revokes the current session. Wrong-password throttling remains. This is a single-owner backend, not a multi-user service.
 
 ## Read-only mailbox analysis
 
@@ -51,7 +51,7 @@ The frontend refreshes hourly while open. There is **no background daily schedul
 | `POST /api/gmail/disconnect` | Revoke Gmail grant |
 | `POST /api/ask` | `{question, context, includeGmail, consent}` → `{answer, source, model, mailCount, generatedAt}` |
 
-All private routes require a backend session. Browser CORS allows only the configured origin. POST routes require JSON. Requests have size, frequency and timeout limits. Provider keys stay on the server; errors do not echo upstream response bodies. No mailbox context or model answers are logged or committed.
+All private routes require a backend session. Browser CORS allows only the configured origin. POST routes require JSON. Requests have size and timeout limits, but no AI call-frequency quota. Provider keys stay on the server; errors do not echo upstream response bodies. No mailbox context or model answers are logged or committed.
 
 ## Verification
 

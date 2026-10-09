@@ -9,6 +9,10 @@ test('private API rejects unauthenticated access, then checks server configurati
   const base='http://127.0.0.1:'+server.address().port;
   try {
     let r=await fetch(base+'/api/status');assert.equal(r.status,200);assert.equal((await r.json()).authenticated,false);
+    r=await fetch(base+'/',{redirect:'manual'});assert.equal(r.status,303);assert.equal(r.headers.get('location'),'/login');
+    r=await fetch(base+'/index.html',{redirect:'manual'});assert.equal(r.status,303);
+    r=await fetch(base+'/course-engine.js');assert.equal(r.status,401);
+    r=await fetch(base+'/login');assert.equal(r.status,200);assert.match(await r.text(),/请输入密码/);
     r=await fetch(base+'/api/gmail/snapshot');assert.equal(r.status,401);
     r=await fetch(base+'/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:'今天要做什么'})});assert.equal(r.status,401);
     r=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:'anything'})});assert.equal(r.status,503);
@@ -16,13 +20,22 @@ test('private API rejects unauthenticated access, then checks server configurati
     r=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:'wrong'})});assert.equal(r.status,401);
     r=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:process.env.WORKSPACE_PASSWORD})});assert.equal(r.status,200);
     const cookie=r.headers.get('set-cookie');assert.match(cookie,/HttpOnly/);const session=cookie.split(';')[0];
-    r=await fetch(base+'/api/status',{headers:{Cookie:session}});assert.equal((await r.json()).authenticated,true);
-    r=await fetch(base+'/api/ask',{method:'POST',headers:{Cookie:session,'Content-Type':'application/json'},body:JSON.stringify({question:'今天要做什么'})});assert.equal(r.status,503);
-    r=await fetch(base+'/api/gmail/snapshot',{headers:{Cookie:session}});assert.equal(r.status,409);
+    assert.match(cookie,/SameSite=Lax/);assert.doesNotMatch(cookie,/Max-Age=28800/);
+    r=await fetch(base+'/',{headers:{Cookie:session}});assert.equal(r.status,200);assert.match(await r.text(),/window.JING_PRIVATE_SITE=true/);
+    r=await fetch(base+'/course-engine.js',{headers:{Cookie:session}});assert.equal(r.status,200);
+    process.env.WORKSPACE_PASSWORD='changed-test-only-long-password';
+    r=await fetch(base+'/',{headers:{Cookie:session},redirect:'manual'});assert.equal(r.status,303);
+    process.env.WORKSPACE_PASSWORD='test-only-long-workspace-password';
+    r=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:process.env.WORKSPACE_PASSWORD})});
+    const renewed=r.headers.get('set-cookie').split(';')[0];
+    r=await fetch(base+'/api/status',{headers:{Cookie:renewed}});assert.equal((await r.json()).authenticated,true);
+    r=await fetch(base+'/api/ask',{method:'POST',headers:{Cookie:renewed,'Content-Type':'application/json'},body:JSON.stringify({question:'今天要做什么'})});assert.equal(r.status,503);
+    r=await fetch(base+'/api/gmail/snapshot',{headers:{Cookie:renewed}});assert.equal(r.status,409);
+    for(let i=0;i<65;i++){r=await fetch(base+'/api/status',{headers:{Cookie:renewed}});assert.equal(r.status,200);}
     r=await fetch(base+'/api/status',{headers:{Origin:'https://untrusted.example'}});assert.equal(r.status,403);
     r=await fetch(base+'/.env');assert.equal(r.status,404);
-    r=await fetch(base+'/api/logout',{method:'POST',headers:{Cookie:session,'Content-Type':'application/json'},body:'{}'});assert.equal(r.status,200);
-    r=await fetch(base+'/api/status',{headers:{Cookie:session}});assert.equal((await r.json()).authenticated,false);
+    r=await fetch(base+'/api/logout',{method:'POST',headers:{Cookie:renewed,'Content-Type':'application/json'},body:'{}'});assert.equal(r.status,200);
+    r=await fetch(base+'/api/status',{headers:{Cookie:renewed}});assert.equal((await r.json()).authenticated,false);
   }finally{delete process.env.WORKSPACE_PASSWORD;await new Promise(resolve=>server.close(resolve));}
 });
 test('mail summaries exclude authentication messages and redact numeric secrets',()=>{

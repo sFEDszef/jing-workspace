@@ -2,12 +2,15 @@
 (() => {
   const key = 'jingWorkspaceConnectionV1';
   let config; try { config = JSON.parse(localStorage.getItem(key) || '{}'); } catch { config = {}; }
+  const privateSite=window.JING_PRIVATE_SITE===true;
+  if(privateSite)config.backendUrl=window.location.origin;
   let busy = false, status = null;
   function base() { return String(config.backendUrl || '').replace(/\/$/, ''); }
   async function request(path, body) {
     if (!base()) throw new Error('请先设置后端地址。');
     const response = await fetch(base() + path, { method: body === undefined ? 'GET' : 'POST', credentials: 'include', headers: body === undefined ? {} : {'Content-Type':'application/json'}, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(60000) });
     const data = await response.json().catch(() => ({}));
+    if(privateSite&&response.status===401)window.location.replace('/login');
     if (!response.ok) throw new Error(data.error || `连接失败 (${response.status})`);
     return data;
   }
@@ -17,6 +20,7 @@
   window.saveWorkspaceConnection = async function () {
     try {
       const value = document.getElementById('workspaceBackend').value.trim().replace(/\/$/, '');
+      if(privateSite&&value!==window.location.origin)throw new Error('此私人网站只使用自身服务器，无需更改地址。');
       const parsed = new URL(value);
       if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && ['localhost','127.0.0.1'].includes(parsed.hostname))) throw new Error('请使用 HTTPS 后端地址，本地测试可用 localhost。');
       if(parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== '/') throw new Error('请输入不含密钥、参数或路径的后端根地址。');
@@ -31,7 +35,7 @@
   function emptyMail() { mails.splice(0); Object.assign(gmailSnapshot,{account:'Not connected',lastSync:'Not connected',inboxUnread:0}); renderGmailSnapshot(); renderDashboard(); }
   window.syncWorkspaceGmail = async function(quiet=false) { try { const data = await request('/api/gmail/snapshot'); mails.splice(0,mails.length,...data.emails); Object.assign(gmailSnapshot,{account:data.account,lastSync:data.lastSync,inboxUnread:data.inboxUnread}); renderGmailSnapshot(); renderDashboard(); if(!quiet) toast(`${data.emails.length} 个邮件会话已刷新`); } catch(e) { document.getElementById('lastGmailSync').textContent='同步失败 · 当前显示未刷新'; if(!quiet)toast(e.message); } };
   window.disconnectWorkspaceGmail = async function () { try { await request('/api/gmail/disconnect',{}); emptyMail(); toast('已断开本工作台的 Gmail 连接'); } catch(e) { toast(e.message); } };
-  window.logoutWorkspaceBackend = async function () { try { await request('/api/logout',{}); status=null; emptyMail(); toast('已退出后端'); } catch(e) { toast(e.message); } };
+  window.logoutWorkspaceBackend = async function () { try { await request('/api/logout',{}); status=null; emptyMail(); if(privateSite)window.location.replace('/login');else toast('已退出后端'); } catch(e) { toast(e.message); } };
   showSyncInfo = openWorkspaceConnection;
   const localAnswer = workspaceAnswer;
   openAssistant = function () {
@@ -56,6 +60,7 @@
   askWorkspace=function(){const input=document.getElementById('assistantQuestion'),q=input?.value.trim();if(q)ask(q,Boolean(document.getElementById('askIncludeGmail')?.checked));};
   askFromDashboard=function(){const input=document.getElementById('dashboardAsk'),q=input?.value.trim();if(q){input.value='';ask(q,false);}};
   document.getElementById('askAI').onclick=openAssistant;
+  if(privateSite){const logout=document.createElement('button');logout.className='nav-item';logout.textContent='Sign out · 退出工作台';logout.onclick=logoutWorkspaceBackend;document.getElementById('settingsBtn').after(logout);}
   const notice=document.createElement('div'); notice.className='small';notice.style.cssText='padding:8px 0;color:var(--muted)';notice.textContent='Published edition · Courses, assignment examples and market figures are demonstrations. Upload your files and create your own tasks. Gmail and cloud AI require connection.';document.getElementById('dashboard').prepend(notice);
   const settings=document.createElement('button'); settings.className='btn ghost';settings.textContent='AI & Gmail settings';settings.onclick=openWorkspaceConnection;document.querySelector('#mail .toolbar').appendChild(settings);
   setInterval(()=>{if(base()&&document.visibilityState==='visible')syncWorkspaceGmail(true);},3600000);
