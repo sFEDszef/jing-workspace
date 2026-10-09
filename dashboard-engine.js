@@ -48,7 +48,7 @@ function item(data){
 function courseWeight(code){return CORE_COURSES.has(code)?5:code?2:0}
 function courseLectures(code){return [...(courseCatalog[code]?.lectures||[]),...(workspaceState.customLectures?.[code]||[])]}
 function parseMailDate(text){const match=String(text||'').match(/^([A-Za-z]{3})\s+(\d{1,2})\s*·\s*(\d{1,2}):(\d{2})/);if(!match)return null;const month=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(match[1]);if(month<0)return null;const now=nowDate(),d=new Date(now.getFullYear(),month,Number(match[2]),Number(match[3]),Number(match[4]));if(d-now>31*DAY)d.setFullYear(d.getFullYear()-1);return d}
-function recurringUntil(event){return event.id==='class-cui6078'?new Date('2026-12-12T23:59:00'):new Date('2026-12-05T23:59:00')}
+function recurringUntil(event){return parseDateTime(event.until,'23:59')||(event.id==='class-cui6078'?new Date('2026-12-12T23:59:00'):new Date('2026-12-05T23:59:00'))}
 function eventOccurrences(event,from,to){
   const first=parseDateTime(event.date,event.time);if(!first)return [];
   if(!event.recurring)return first>=from&&first<=to?[{...event,occurrenceStart:first}]:[];
@@ -150,7 +150,7 @@ openPrioritySection=function(kind){const active=evaluatedItems(),focus=active.sl
 function renderDynamicDashboard(){const active=evaluatedItems(),focus=active.slice(0,5);applyDashboardLayout();renderDynamicFocus(focus);renderStats(active);renderImportantMails();renderAgenda(active);renderUpcoming(active,focus);renderCompleted();renderPriorityFooter(active,focus);const date=document.getElementById('topDate');if(date)date.textContent=nowDate().toLocaleDateString([], {weekday:'short',day:'numeric',month:'short',year:'numeric'})}
 
 const legacyRenderDashboard=renderDashboard;
-renderDashboard=function(){legacyRenderDashboard();renderDynamicDashboard()};
+renderDashboard=function(){legacyRenderDashboard();renderDynamicDashboard();renderDeadlineStrip()};
 saveWorkspaceState=function(){return persist(true)};
 function syncCompletion(entry,complete){
   const control=controlFor(entry.id);
@@ -210,7 +210,64 @@ function injectStyles(){const style=document.createElement('style');style.textCo
 @media(max-width:1050px){.dashboard-priority-secondary{grid-template-columns:1fr}.priority-actions{margin-left:0}.priority-title-line{flex-wrap:wrap}}
 @media(max-width:700px){.dashboard-priority-secondary{grid-template-columns:1fr}.priority-card{padding:10px}.priority-actions{display:grid;grid-template-columns:repeat(3,1fr);margin-left:0}.priority-actions .btn,.priority-actions select,.mini-action{min-height:40px;width:100%}.priority-card-main{display:grid;grid-template-columns:30px 20px 1fr}.priority-copy{grid-column:3}.snooze-grid{grid-template-columns:1fr}.all-priority-row{grid-template-columns:32px 1fr auto}.all-priority-row .btn{grid-column:2/-1}.dash-stats{overflow-x:auto;grid-template-columns:repeat(5,minmax(150px,1fr));padding-bottom:5px}.dash-stat{min-width:150px}.dashboard-focus-panel .dash-panel-body{padding:6px}.agenda-row button{min-height:40px}.priority-title-line{display:block}.priority-level{margin-top:4px}.dashboard-compact .dashboard-hero .hero-actions{position:static;display:flex;flex-wrap:wrap;margin-top:12px}.dashboard-compact .priority-card{grid-template-columns:1fr;padding:8px}.dashboard-compact .priority-actions{display:grid;grid-template-columns:1fr 52px;width:100%;margin:2px 0 0}.dashboard-compact .priority-actions .btn,.dashboard-compact .priority-actions .mini-action{width:100%;min-height:36px}.dashboard-compact .priority-summary-footer{overflow-x:auto}.dashboard-compact .priority-summary-footer button{white-space:nowrap;min-height:36px}}
 `;document.head.appendChild(style)}
+// Confirmed dates only: never promote the catalog's demonstration dates to DDLs.
+function realDeadlines(){
+  const all=collectPriorityItems();
+  return all.filter(x=>x.dueAt&&!x.sourceCompleted&&!x.completedAt&&!controlFor(x.id).completedAt&&!(x.sourceType==='assignment'&&!String(x.sourceId).startsWith('custom:')))
+    .sort((a,b)=>new Date(a.dueAt)-new Date(b.dueAt));
+}
+function deadlineSource(entry){return entry.sourceType==='personal'?(workspaceState.miscTasks||[]).find(t=>t.id===entry.sourceId)?.sourceUrl:null}
+function deadlineCard(entry){
+  const remaining=new Date(entry.dueAt)-nowDate(),tone=remaining<=DAY?'urgent':remaining<=3*DAY?'soon':'later';
+  const source=deadlineSource(entry),link=source&&/^https:\/\/mail\.google\.com\/mail\//.test(source)?`<a class="btn ghost" href="${escapeText(source)}" target="_blank" rel="noopener noreferrer">打开原邮件 ↗</a>`:`<button class="btn ghost" onclick="openPrioritySource('${entry.id}')">查看事项</button>`;
+  const date=new Date(entry.dueAt).toLocaleString('zh-HK',{timeZone:'Asia/Hong_Kong',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+  return `<article class="deadline-card ${tone}"><span class="deadline-label">${remaining<0?'已逾期':remaining<=DAY?'24 小时内截止':remaining<=3*DAY?'3 天内截止':'即将截止'}</span><b>${escapeText(entry.title)}</b><strong>${escapeText(date)} · 香港时间</strong><span class="small">${escapeText(relativeTime(entry.dueAt))}</span><div class="settings-actions">${link}<button class="btn ghost" onclick="completePriorityItem('${entry.id}',true)">✓ 已完成</button>${entry.sourceType==='personal'?`<button class="btn ghost" onclick="openDeadlineEditor('${entry.sourceId}')">编辑</button>`:''}</div></article>`;
+}
+function renderDeadlineStrip(){const box=document.getElementById('deadlineStrip');if(!box)return;const entries=realDeadlines();box.innerHTML=entries.length?entries.slice(0,3).map(deadlineCard).join(''):'<div class="small" style="padding:12px">暂无已确认的截止事项。可从邮件添加并确认日期；不显示演示 DDL。</div>'}
+showAllDeadlines=function(){const entries=realDeadlines();openModal(`<h2>全部截止事项</h2><div class="deadline-list">${entries.length?entries.map(deadlineCard).join(''):'暂无已确认的截止事项。'}</div><button class="btn" onclick="openDeadlineEditor()">＋ 添加 DDL</button>`)};
+openDeadlineEditor=function(id){
+  const task=(workspaceState.miscTasks||[]).find(t=>t.id===id),date=task?.dueAt?new Date(task.dueAt):null;
+  const local=date?new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Hong_Kong',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(date).replace(' ','T'):'';
+  openModal(`<h2>${task?'编辑':'添加'}截止事项</h2><p class="small">请核对原邮件的截止时间；不从摘要猜测日期。以下时间按香港时间保存。</p><div class="field"><label>来源邮件（可选）</label><select class="form-select" id="ddlMail" onchange="selectDeadlineMail(this.value)"><option value="">个人事项 / 保留原来源</option>${mails.map((m,i)=>`<option value="${i}">${escapeText(m.title)}</option>`).join('')}</select></div><div class="field"><label>事项名称</label><input class="form-input" id="ddlTitle" value="${escapeText(task?.title||'')}"></div><div class="field"><label>截止时间 · Asia/Hong_Kong</label><input class="form-input" type="datetime-local" id="ddlDate" value="${local}"></div><button class="btn" onclick="saveConfirmedDeadline('${task?.id||''}')">确认并显示在首页</button>`);
+};
+selectDeadlineMail=function(value){if(value==='')return;const mail=mails[Number(value)];if(mail)document.getElementById('ddlTitle').value=mail.title};
+saveConfirmedDeadline=function(id){
+  const title=document.getElementById('ddlTitle').value.trim(),date=document.getElementById('ddlDate').value,selected=document.getElementById('ddlMail').value;
+  if(!title||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(date)||!safeTime(date+'+08:00'))return toast('请输入事项名称和明确的截止日期、时间。');
+  const mail=selected===''?null:mails[Number(selected)],existing=(workspaceState.miscTasks||[]).find(t=>t.id===id)|| (mail&&(workspaceState.miscTasks||[]).find(t=>t.sourceUrl===mail.url));
+  const record={id:existing?.id||'ddl-'+Date.now(),title,dueAt:new Date(date+'+08:00').toISOString(),done:existing?.done||false,estimatedMinutes:30,sourceUrl:mail?.url||existing?.sourceUrl||'',sourceTitle:mail?.title||existing?.sourceTitle||'',deadlineConfirmed:true};
+  if(existing)Object.assign(existing,record);else workspaceState.miscTasks.push(record);
+  if(persist()){closeModal();renderAssignments();toast('截止事项已保存到首页；尚未创建系统通知。')}
+};
+let calendarWeekOffset=0;
+shiftCalendarWeek=function(direction){calendarWeekOffset=direction===0?0:calendarWeekOffset+direction;renderCalendar()};
+renderCalendar=function(){
+  const box=document.getElementById('courseTimetable'),classes=(workspaceState.events||[]).filter(e=>e.module==='Course'&&e.recurring);
+  if(box)box.innerHTML=classes.length?classes.slice().sort((a,b)=>((new Date(a.date+'T00:00:00').getDay()+6)%7)-((new Date(b.date+'T00:00:00').getDay()+6)%7)||a.time.localeCompare(b.time)).map(e=>`<div class="timetable-row"><b>${escapeText(e.title)}</b><span>${['周日','周一','周二','周三','周四','周五','周六'][new Date(e.date+'T00:00:00').getDay()]} ${escapeText(e.time)}–${escapeText(e.end||'')}</span><span>${escapeText(e.location||'地点未设置')}</span><small>${escapeText(e.date)} → ${escapeText(e.until||'学期结束')} · 香港时间</small></div>`).join(''):'<p class="small" style="padding:12px">此浏览器尚未导入私人课表。请导入课表文件；不会覆盖已有 Plans。</p>';
+  const grid=document.getElementById('calendarGrid');if(!grid)return;
+  const today=startOfDay(nowDate()),monday=addDays(today,-((today.getDay()+6)%7)+calendarWeekOffset*7),days=Array.from({length:7},(_,i)=>addDays(monday,i));
+  grid.innerHTML=days.map(day=>{const key=dateKey(day),events=allOccurrences(day,addDays(day,1)).filter(e=>dateKey(e.occurrenceStart)===key);return `<div class="day"><b>${escapeText(day.toLocaleDateString('zh-HK',{month:'short',day:'numeric',weekday:'short'}))}</b>${events.map(e=>`<div class="event" onclick="openEvent('${e.id}')"><b>${escapeText(e.time)}${e.end?'–'+escapeText(e.end):''}</b><br>${escapeText(e.title)}${e.location?'<br>'+escapeText(e.location):''}</div>`).join('')||'<p class="small">—</p>'}</div>`}).join('');
+};
+openTimetableImport=function(){openModal('<h2>导入课程表</h2><p class="small">选择私人课表 JSON 文件。按课程编号更新课程，只保存在此浏览器，不覆盖个人 Plans、不上传公开仓库。</p><input type="file" id="timetableFile" accept=".json,application/json" onchange="importTimetableFile(this)">')};
+importTimetableFile=async function(input){
+  try{
+    const file=input.files?.[0];if(!file)return;if(file.size>50000)throw new Error('课表文件过大。');
+    const records=JSON.parse(await file.text());if(!Array.isArray(records)||!records.length||records.length>30)throw new Error('课表必须是 1–30 门课程的 JSON 数组。');
+    const validated=records.map(e=>{
+      if(!/^[A-Z]{3}\d{4}$/.test(e.course)||!parseDateTime(e.date,e.time)||!parseDateTime(e.date,e.end)||!parseDateTime(e.until)||e.end<=e.time||e.until<e.date||typeof e.title!=='string'||typeof e.location!=='string')throw new Error('课程编号、日期、时间或地点格式不正确。');
+      return {id:'class-'+e.course.toLowerCase(),course:e.course,title:e.course+' · '+e.title,date:e.date,time:e.time,end:e.end,until:e.until,location:e.location,module:'Course',recurring:true};
+    });
+    if(new Set(validated.map(e=>e.id)).size!==validated.length)throw new Error('课表中有重复课程。');
+    const before=workspaceState.events;
+    workspaceState.events=[...(before||[]).filter(e=>!validated.some(v=>v.id===e.id||(e.module==='Course'&&e.recurring&&String(e.title).includes(v.course)))),...validated];
+    if(!persist(false)){workspaceState.events=before;return}
+    closeModal();renderCalendar();renderDashboard();toast('课表已导入，原有 Plans 已保留。');
+  }catch(e){toast('未导入：'+e.message)}
+};
+const plannerStyle=document.createElement('style');plannerStyle.textContent=`
+#deadlinePanel{margin:8px 0 10px}.deadline-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:0 12px 12px}.deadline-card{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:10px 12px;display:grid;gap:3px;min-width:0}.deadline-card.urgent{border-left-color:#dc384e;background:#fff1f3}.deadline-card.soon{border-left-color:#df8a22;background:#fff7e9}.deadline-card b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.deadline-card strong{font-size:13px}.deadline-label{font-size:11px;font-weight:700}.deadline-card.urgent .deadline-label,.deadline-card.urgent strong{color:#b22439}.deadline-card .settings-actions{margin:3px 0 0;gap:5px;flex-wrap:wrap}.deadline-card .btn{font-size:11px;padding:5px 8px}.deadline-list{display:grid;gap:10px}.timetable-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;padding:12px;border-bottom:1px solid var(--line);font-size:14px}.timetable-row small{grid-column:1/-1;color:var(--muted)}@media(max-width:700px){.deadline-strip{grid-template-columns:1fr}.timetable-row{grid-template-columns:1fr}.timetable-row small{grid-column:auto}.calendar{grid-template-columns:1fr 1fr}}`;document.head.appendChild(plannerStyle);
 injectStyles();
+renderCalendar();
 persist(false);renderAssignments();renderDashboard();
 if(!window.dashboardPriorityTimer)window.dashboardPriorityTimer=setInterval(()=>{if(document.visibilityState==='visible')renderDashboard()},MINUTE);
 })();

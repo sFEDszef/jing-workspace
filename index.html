@@ -266,6 +266,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
         <div class="dash-stat" onclick="go('calendar')"><div class="dash-stat-icon tone-blue">▣</div><div><strong id="dashCalendarCount">0</strong><span>Today’s events</span><small id="dashNextEvent">No event scheduled</small></div></div>
       </div>
 
+      <div class="dash-panel" id="deadlinePanel"><div class="dash-panel-head"><h3>Upcoming Deadlines · 即将截止</h3><div class="dash-head-actions"><button onclick="openDeadlineEditor()">＋ 添加 DDL</button><button onclick="showAllDeadlines()">查看全部 →</button></div></div><div id="deadlineStrip" class="deadline-strip"></div></div>
       <div class="dashboard-primary">
         <div class="dash-panel dashboard-focus-panel"><div class="dash-panel-head"><h3>🎯 Today’s Focus</h3><div class="dash-head-actions"><button onclick="refreshDashboardPriorities()">Refresh</button><button onclick="openAllPriorities()">View all →</button></div></div><div class="dash-panel-body" id="dashboardFocus"></div><div class="priority-summary-footer" id="dashboardPriorityFooter"></div></div>
         <div class="dash-panel"><div class="dash-panel-head"><h3>✉ Important Emails</h3><button onclick="go('mail')">View all →</button></div><div class="dash-panel-body" id="dashboardEmails"></div></div>
@@ -363,7 +364,9 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
       <h2 class="page-title">Calendar</h2>
       <div class="toolbar"><button class="btn" onclick="openAddEvent()">+ Add event</button><button class="btn ghost" onclick="openStudyPlan()">Plan my study week ✦</button></div>
       <div class="course-note"><b>Your Calendar</b><br><span class="small">Add your classes and study events. Personal timetable data is saved in this browser.</span></div>
+      <div class="card"><div class="dash-panel-head"><h3>课程表 · Semester 1, 2026–27</h3><button class="btn ghost" onclick="openTimetableImport()">导入 / 更新课表</button></div><div id="courseTimetable"></div></div>
       <div class="card">
+        <div class="dash-panel-head"><h3>Plans · 本周安排</h3><div class="dash-head-actions"><button onclick="shiftCalendarWeek(-1)">←</button><button onclick="shiftCalendarWeek(0)">本周</button><button onclick="shiftCalendarWeek(1)">→</button></div></div>
         <div class="calendar" id="calendarGrid"></div>
       </div>
     </section>
