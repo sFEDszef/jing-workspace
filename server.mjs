@@ -4,6 +4,7 @@ import {createHash,randomBytes,timingSafeEqual,createCipheriv,createDecipheriv} 
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {validatePaperRequest, paperInstructions, validatePaperAnswer} from './papers-ai.mjs';
+import {marketSnapshot,explainMarket} from './markets-service.mjs';
 
 const env=process.env, root=path.dirname(fileURLToPath(import.meta.url));
 const publicBase=(env.BACKEND_PUBLIC_URL||env.RENDER_EXTERNAL_URL||'http://localhost:3000').replace(/\/$/,'');
@@ -79,7 +80,7 @@ async function snapshot(){
   emails.sort((a,b)=>b.received.localeCompare(a.received));
   return {account:tokens.email,lastSync:new Date().toISOString(),inboxUnread:emails.filter(m=>m.unread).length,emails,windowDays:7,limit:100,truncated:Boolean(listed.nextPageToken),unreadScope:'Unread conversations in this 7-day snapshot (not the entire inbox)'};
 }
-const staticFiles=new Set(['index.html','course-engine.js','dashboard-engine.js','workspace-api.js','pdf.classic.js','pdf.worker.classic.js','jszip.min.js','papers.js','papers.css']);
+const staticFiles=new Set(['index.html','course-engine.js','dashboard-engine.js','workspace-api.js','pdf.classic.js','pdf.worker.classic.js','jszip.min.js','papers.js','papers.css','markets.js','markets.css','markets-catalog.js','markets-rules.js','markets-view.js']);
 export function resolveMailReferences(answer,emails=[]){
   return answer.replace(/\[M(\d+)\]/g,(_,number)=>{
     const email=emails[Number(number)-1];
@@ -146,6 +147,8 @@ export async function handle(req,res){
     if(pathname==='/api/gmail/disconnect'&&req.method==='POST'){
       if(tokens){await remote('https://oauth2.googleapis.com/revoke',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:tokens.refresh_token||tokens.access_token})});tokens=null;await persistTokens();}res.setHeader('Set-Cookie',gmailCookie('',0));json(res,200,{ok:true});return;
     }
+    if(pathname==='/api/markets/snapshot'&&req.method==='POST'){const data=await body(req);json(res,200,await marketSnapshot(data.sectors||[]));return;}
+    if(pathname==='/api/markets/explain'&&req.method==='POST'){json(res,200,await explainMarket(await body(req)));return;}
     if(pathname==='/api/papers/analyze'&&req.method==='POST'){
       const data=validatePaperRequest(await body(req,1000000));
       if(!aiConfigured())throw Object.assign(new Error('DeepSeek 尚未配置，请打开 AI 连接设置。'),{status:503});

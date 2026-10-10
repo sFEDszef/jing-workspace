@@ -228,6 +228,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
 @media(max-width:700px){.rescue-grid{grid-template-columns:1fr}.rescue-card{min-height:150px}}
 </style>
 <link rel="stylesheet" href="papers.css">
+<link rel="stylesheet" href="markets.css">
 </head>
 <body>
 <div class="app">
@@ -346,18 +347,8 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
     </section>
 
     <section id="markets" class="page">
-      <h2 class="page-title">Markets · Portfolio</h2>
-      <div class="stats">
-        <div class="card stat"><strong>+1.8%</strong><span>today</span></div>
-        <div class="card stat"><strong>5</strong><span>watchlist stocks</span></div>
-        <div class="card stat"><strong>1</strong><span>important update</span></div>
-        <div class="card stat"><strong>0</strong><span>urgent actions</span></div>
-      </div>
-      <div class="card">
-        <div class="stock-row"><b>9988.HK<br><span class="small">Alibaba</span></b><span>HK$87.60</span><span class="pos">+2.31%</span><div class="spark"><span style="height:9px"></span><span style="height:14px"></span><span style="height:12px"></span><span style="height:18px"></span><span style="height:16px"></span><span style="height:22px"></span><span style="height:26px"></span><span style="height:24px"></span><span style="height:31px"></span><span style="height:29px"></span></div><button class="btn ghost" onclick="openStock('9988.HK')">Details</button></div>
-        <div class="stock-row"><b>0700.HK<br><span class="small">Tencent</span></b><span>HK$412.40</span><span class="neg">-0.42%</span><div class="spark"><span style="height:28px"></span><span style="height:26px"></span><span style="height:25px"></span><span style="height:21px"></span><span style="height:23px"></span><span style="height:18px"></span><span style="height:19px"></span><span style="height:17px"></span><span style="height:16px"></span><span style="height:14px"></span></div><button class="btn ghost" onclick="openStock('0700.HK')">Details</button></div>
-        <div class="stock-row"><b>AAPL<br><span class="small">Apple</span></b><span>US$—</span><span class="small">Demo</span><div class="spark"><span style="height:12px"></span><span style="height:13px"></span><span style="height:16px"></span><span style="height:17px"></span><span style="height:15px"></span><span style="height:18px"></span><span style="height:21px"></span><span style="height:22px"></span><span style="height:24px"></span><span style="height:25px"></span></div><button class="btn ghost" onclick="openStock('AAPL')">Details</button></div>
-      </div>
+      <h2 class="page-title">Markets · 全球观察</h2>
+      <p>正在加载市场观察页。若未显示，请刷新并确认市场模块已经部署。</p>
     </section>
 
     <section id="calendar" class="page">
@@ -770,5 +761,9 @@ renderAssignments();renderPapers();renderCalendar();renderDashboard();
 <script src="dashboard-engine.js"></script>
 <script src="workspace-api.js"></script>
 <script type="module" src="papers.js"></script>
+<script src="markets-catalog.js"></script>
+<script src="markets-rules.js"></script>
+<script src="markets-view.js"></script>
+<script src="markets.js"></script>
 </body>
 </html>
