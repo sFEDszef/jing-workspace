@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseFeed,parseDaily,selectSectors,marketSnapshot,explainMarket,sources} from './markets-service.mjs';
+import {parseFeed,parseDaily,parseFredCSV,selectSectors,marketSnapshot,explainMarket,sources} from './markets-service.mjs';
 import {parseICS,parseFedCalendar,nextSevenDays,calendarSources} from './markets-calendar.mjs';
 const xml=`<rss><channel><item><title><![CDATA[Oil &amp; energy update]]></title><link>https://example.org/story</link><pubDate>Fri, 09 Oct 2026 01:00:00 GMT</pubDate><description><![CDATA[<b>Supply</b> and demand &amp; inventories.]]></description></item><item><title>Duplicate</title><link>https://example.org/story</link></item><item><title>Unsafe</title><link>javascript:alert(1)</link></item></channel></rss>`;
 test('RSS preserves publication/source, cleans markup, deduplicates and rejects unsafe links',()=>{
@@ -12,6 +12,11 @@ test('daily returns use trading sessions and leave insufficient data empty',()=>
   const series={};for(let i=1;i<=21;i++)series['2026-09-'+String(i).padStart(2,'0')]={'4. close':100+i};
   const q=parseDaily({'Time Series (Daily)':series});assert.equal(q.history.length,21);assert.equal(q.close,121);assert.equal(q.changes.week,(121/116-1)*100);assert.equal(q.changes.month,(121/101-1)*100);
   const small=parseDaily({'Time Series (Daily)':{'2026-10-01':{'4. close':'10'},'2026-10-02':{'4. close':'11'}}});assert.equal(small.changes.week,null);assert.throws(()=>parseDaily({Information:'Quota exhausted'}));
+});
+test('FRED CSV keeps only valid dated observations and calculates transparent changes',()=>{
+  const csv='observation_date,DGS10\n2026-10-01,5.00\n2026-10-02,.\n2026-10-03,5.10\n2026-10-04,5.20\n2026-10-05,5.30\n2026-10-06,5.40\n2026-10-07,5.50';
+  const data=parseFredCSV(csv,'DGS10');assert.equal(data.date,'2026-10-07');assert.equal(data.value,5.5);assert.ok(Math.abs(data.changes.week.difference-.5)<1e-10);assert.equal(data.history.length,6);
+  assert.throws(()=>parseFredCSV('observation_date,OTHER\n2026-10-01,1','DGS10'),/格式无效/);
 });
 test('priority is explainable, limited to three, recent and never boosted by dramatic wording alone',()=>{
   const now=Date.parse('2026-10-10T02:00:00Z'),base={snippet:'',kind:'媒体',category:'world',sectors:[],publishedAt:'2026-10-10T01:00:00Z',url:'https://example.org/'};
@@ -39,9 +44,9 @@ test('official calendars preserve UTC, date-only uncertainty and seven-day filte
 });
 test('snapshot handles partial failures, cache, no key and AI consent without fake success',async()=>{
   const previous=globalThis.fetch,key=process.env.ALPHA_VANTAGE_API_KEY,ai=process.env.DEEPSEEK_API_KEY;delete process.env.ALPHA_VANTAGE_API_KEY;delete process.env.DEEPSEEK_API_KEY;let count=0;
-  globalThis.fetch=async url=>{count++;if(String(url).includes('bbci'))throw Error('Offline');return new Response(xml)};
+  globalThis.fetch=async url=>{count++;if(String(url).includes('bbci'))throw Error('Offline');if(String(url).includes('fredgraph.csv')){const id=new URL(String(url)).searchParams.get('id');return new Response(`observation_date,${id}\n2026-10-01,4\n2026-10-02,4.1\n2026-10-03,4.2\n2026-10-04,4.3\n2026-10-05,4.4\n2026-10-06,4.5`)}return new Response(xml)};
   try{
-    const snapshot=await marketSnapshot(['energy']);assert.equal(snapshot.news.length,1);assert.equal(snapshot.quoteConfigured,false);assert.equal(snapshot.quotes[0].data,null);assert.equal(snapshot.sources.filter(s=>s.error).length,2);
+    const snapshot=await marketSnapshot(['energy']);assert.equal(snapshot.schemaVersion,3);assert.equal(snapshot.news.length,1);assert.equal(snapshot.quoteConfigured,false);assert.equal(snapshot.quotes[0].data,null);assert.equal(snapshot.sources.filter(s=>s.error).length,2);assert.equal(snapshot.pulse.length,5);assert.equal(snapshot.pulse.find(x=>x.id==='fed').data.upper,4.5);assert.equal(snapshot.pulse.find(x=>x.id==='goldProxy').data,null);
     const first=count;await marketSnapshot(['energy']);assert.equal(count,first,'success and failure backoff cache both work');
     await assert.rejects(()=>explainMarket({articleId:snapshot.news[0].id}),/同意/);
     await assert.rejects(()=>explainMarket({articleId:snapshot.news[0].id,consent:true}),/AI 服务未配置/);
