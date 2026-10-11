@@ -9,8 +9,8 @@ test('RSS preserves publication/source, cleans markup, deduplicates and rejects 
 test('sector allowlist prevents unbounded provider requests',()=>{assert.equal(selectSectors(['gold','gold']).length,1);assert.throws(()=>selectSectors(['http://localhost']));assert.throws(()=>selectSectors('gold'));});
 test('incomplete publication dates stay unknown instead of inventing a year',()=>{assert.equal(parseFeed(xml.replace('2026 ',''),sources[1])[0].publishedAt,null)});
 test('daily returns use trading sessions and leave insufficient data empty',()=>{
-  const series={};for(let i=1;i<=21;i++)series['2026-09-'+String(i).padStart(2,'0')]={'4. close':100+i};
-  const q=parseDaily({'Time Series (Daily)':series});assert.equal(q.history.length,21);assert.equal(q.close,121);assert.equal(q.changes.week,(121/116-1)*100);assert.equal(q.changes.month,(121/101-1)*100);
+  const series={};for(let i=1;i<=21;i++)series['2026-09-'+String(i).padStart(2,'0')]={'1. open':String(99+i),'2. high':String(102+i),'3. low':String(98+i),'4. close':String(100+i),'5. volume':String(1000+i)};
+  const q=parseDaily({'Time Series (Daily)':series});assert.equal(q.history.length,21);assert.equal(q.close,121);assert.equal(q.open,120);assert.equal(q.high,123);assert.equal(q.low,119);assert.equal(q.history.at(-1).volume,1021);assert.equal(q.changes.week,(121/116-1)*100);assert.equal(q.changes.month,(121/101-1)*100);
   const small=parseDaily({'Time Series (Daily)':{'2026-10-01':{'4. close':'10'},'2026-10-02':{'4. close':'11'}}});assert.equal(small.changes.week,null);assert.throws(()=>parseDaily({Information:'Quota exhausted'}));
 });
 test('FRED CSV keeps only valid dated observations and calculates transparent changes',()=>{
@@ -46,7 +46,7 @@ test('snapshot handles partial failures, cache, no key and AI consent without fa
   const previous=globalThis.fetch,key=process.env.ALPHA_VANTAGE_API_KEY,ai=process.env.DEEPSEEK_API_KEY;delete process.env.ALPHA_VANTAGE_API_KEY;delete process.env.DEEPSEEK_API_KEY;let count=0;
   globalThis.fetch=async url=>{count++;if(String(url).includes('bbci'))throw Error('Offline');if(String(url).includes('fredgraph.csv')){const id=new URL(String(url)).searchParams.get('id');return new Response(`observation_date,${id}\n2026-10-01,4\n2026-10-02,4.1\n2026-10-03,4.2\n2026-10-04,4.3\n2026-10-05,4.4\n2026-10-06,4.5`)}return new Response(xml)};
   try{
-    const snapshot=await marketSnapshot(['energy']);assert.equal(snapshot.schemaVersion,3);assert.equal(snapshot.news.length,1);assert.equal(snapshot.quoteConfigured,false);assert.equal(snapshot.quotes[0].data,null);assert.equal(snapshot.sources.filter(s=>s.error).length,2);assert.equal(snapshot.pulse.length,5);assert.equal(snapshot.pulse.find(x=>x.id==='fed').data.upper,4.5);assert.equal(snapshot.pulse.find(x=>x.id==='goldProxy').data,null);
+    const snapshot=await marketSnapshot(['energy']);assert.equal(snapshot.schemaVersion,4);assert.equal(snapshot.news.length,1);assert.equal(snapshot.quoteConfigured,false);assert.equal(snapshot.quotes[0].data,null);assert.equal(snapshot.sources.filter(s=>s.error).length,2);assert.equal(snapshot.pulse.length,5);assert.equal(snapshot.pulse.find(x=>x.id==='fed').data.upper,4.5);assert.equal(snapshot.pulse.find(x=>x.id==='goldProxy').data,null);
     const first=count;await marketSnapshot(['energy']);assert.equal(count,first,'success and failure backoff cache both work');
     await assert.rejects(()=>explainMarket({articleId:snapshot.news[0].id}),/同意/);
     await assert.rejects(()=>explainMarket({articleId:snapshot.news[0].id,consent:true}),/AI 服务未配置/);
