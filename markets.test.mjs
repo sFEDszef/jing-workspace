@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseFeed,parseDaily,parseFredCSV,selectSectors,marketSnapshot,explainMarket,sources} from './markets-service.mjs';
+import {parseFeed,parseDaily,parseFredCSV,selectSectors,marketSnapshot,explainMarket,sources,alphaVantageError} from './markets-service.mjs';
 import {parseICS,parseFedCalendar,nextSevenDays,calendarSources} from './markets-calendar.mjs';
 const xml=`<rss><channel><item><title><![CDATA[Oil &amp; energy update]]></title><link>https://example.org/story</link><pubDate>Fri, 09 Oct 2026 01:00:00 GMT</pubDate><description><![CDATA[<b>Supply</b> and demand &amp; inventories.]]></description></item><item><title>Duplicate</title><link>https://example.org/story</link></item><item><title>Unsafe</title><link>javascript:alert(1)</link></item></channel></rss>`;
 test('RSS preserves publication/source, cleans markup, deduplicates and rejects unsafe links',()=>{
@@ -12,6 +12,11 @@ test('daily returns use trading sessions and leave insufficient data empty',()=>
   const series={};for(let i=1;i<=21;i++)series['2026-09-'+String(i).padStart(2,'0')]={'1. open':String(99+i),'2. high':String(102+i),'3. low':String(98+i),'4. close':String(100+i),'5. volume':String(1000+i)};
   const q=parseDaily({'Time Series (Daily)':series});assert.equal(q.history.length,21);assert.equal(q.close,121);assert.equal(q.open,120);assert.equal(q.high,123);assert.equal(q.low,119);assert.equal(q.history.at(-1).volume,1021);assert.equal(q.changes.week,(121/116-1)*100);assert.equal(q.changes.month,(121/101-1)*100);
   const small=parseDaily({'Time Series (Daily)':{'2026-10-01':{'4. close':'10'},'2026-10-02':{'4. close':'11'}}});assert.equal(small.changes.week,null);assert.throws(()=>parseDaily({Information:'Quota exhausted'}));
+});
+test('Alpha Vantage errors are safe and actionable',()=>{
+  assert.equal(alphaVantageError({Information:'The API key is invalid.'}),'Alpha Vantage API Key 无效或尚未激活');
+  assert.match(alphaVantageError({Note:'You have reached the 25 requests per day rate limit.'}),/免费额度已达上限/);
+  assert.equal(alphaVantageError({}),'Alpha Vantage 暂未返回可用日线数据');
 });
 test('FRED CSV keeps only valid dated observations and calculates transparent changes',()=>{
   const csv='observation_date,DGS10\n2026-10-01,5.00\n2026-10-02,.\n2026-10-03,5.10\n2026-10-04,5.20\n2026-10-05,5.30\n2026-10-06,5.40\n2026-10-07,5.50';
@@ -46,7 +51,7 @@ test('snapshot handles partial failures, cache, no key and AI consent without fa
   const previous=globalThis.fetch,key=process.env.ALPHA_VANTAGE_API_KEY,ai=process.env.DEEPSEEK_API_KEY;delete process.env.ALPHA_VANTAGE_API_KEY;delete process.env.DEEPSEEK_API_KEY;let count=0;
   globalThis.fetch=async url=>{count++;if(String(url).includes('bbci'))throw Error('Offline');if(String(url).includes('fredgraph.csv')){const id=new URL(String(url)).searchParams.get('id');return new Response(`observation_date,${id}\n2026-10-01,4\n2026-10-02,4.1\n2026-10-03,4.2\n2026-10-04,4.3\n2026-10-05,4.4\n2026-10-06,4.5`)}return new Response(xml)};
   try{
-    const snapshot=await marketSnapshot(['energy']);assert.equal(snapshot.schemaVersion,4);assert.equal(snapshot.news.length,1);assert.equal(snapshot.quoteConfigured,false);assert.equal(snapshot.quotes[0].data,null);assert.equal(snapshot.sources.filter(s=>s.error).length,2);assert.equal(snapshot.pulse.length,5);assert.equal(snapshot.pulse.find(x=>x.id==='fed').data.upper,4.5);assert.equal(snapshot.pulse.find(x=>x.id==='goldProxy').data,null);
+    const snapshot=await marketSnapshot(['energy']);assert.equal(snapshot.schemaVersion,5);assert.equal(snapshot.news.length,1);assert.equal(snapshot.quoteConfigured,false);assert.equal(snapshot.quotes[0].data,null);assert.equal(snapshot.sources.filter(s=>s.error).length,2);assert.equal(snapshot.pulse.length,5);assert.equal(snapshot.pulse.find(x=>x.id==='fed').data.upper,4.5);assert.equal(snapshot.pulse.find(x=>x.id==='goldProxy').data,null);
     const first=count;await marketSnapshot(['energy']);assert.equal(count,first,'success and failure backoff cache both work');
     await assert.rejects(()=>explainMarket({articleId:snapshot.news[0].id}),/同意/);
     await assert.rejects(()=>explainMarket({articleId:snapshot.news[0].id,consent:true}),/AI 服务未配置/);
