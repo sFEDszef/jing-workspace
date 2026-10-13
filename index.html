@@ -167,6 +167,13 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
 .save-note{font-size:12px;color:var(--good);min-height:16px;margin-top:6px}
 .event{cursor:pointer}
 .assistant-thread{display:grid;gap:14px;max-height:min(55vh,560px);overflow:auto;margin:12px 0;overscroll-behavior:contain}
+.assistant-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px}
+.assistant-exchange{display:grid;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.assistant-exchange:last-child{border-bottom:0;padding-bottom:0}
+.assistant-record-actions{display:flex;justify-content:flex-end}
+.assistant-delete{border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;padding:5px 8px;border-radius:8px;cursor:pointer}
+.assistant-delete:hover{background:#fff0f0;color:var(--danger)}
+.assistant-empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
 .assistant-msg{padding:11px 13px;border-radius:14px;max-width:88%}
 .assistant-msg.user{background:var(--accent);color:#fff;margin-left:auto}
 .assistant-msg.ai{background:var(--soft);color:var(--ink);max-width:100%;line-height:1.65;font-size:15px;overflow-wrap:anywhere}
@@ -219,6 +226,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
  .app{grid-template-columns:86px 1fr} .brand h1,.brand small,.nav .nav-label,.nav-count,.ai-nav-title,.ai-nav-section .ai-label,.sidebar-bottom span{display:none} .sidebar{padding:18px 10px} .nav button{grid-template-columns:1fr;padding:9px}.nav-icon{margin:auto}.ai-nav-section button{justify-content:center;padding:8px}.nav button{text-align:center} .stats,.module-grid{grid-template-columns:repeat(2,1fr)} .grid2,.mail-layout,.settings-grid{grid-template-columns:1fr} .mail-cats{display:flex;overflow:auto;gap:8px} .mail-cats .pill{width:auto;white-space:nowrap} .course-grid,.concept-grid{grid-template-columns:1fr} .resource-row{grid-template-columns:44px 1fr}.resource-actions{grid-column:1/-1;justify-content:flex-start}.settings-btn{text-align:center}.dashboard-primary,.dashboard-secondary{grid-template-columns:1fr 1fr}.dashboard-primary .dash-panel:first-child{grid-column:1/-1}.dash-stats{grid-template-columns:repeat(3,1fr)}.dashboard-hero{grid-template-columns:1fr auto}.hero-quote{display:none}.ai-dock{grid-template-columns:1fr 1fr 1fr}.ai-dock-input{grid-column:1/-1}.important-mail-summary{grid-template-columns:1fr}
 }
 @media(max-width:700px){.main{padding:14px}.top-date{display:none}.search{min-width:0;width:100%}.dashboard-hero{grid-template-columns:1fr;padding:22px}.dashboard-hero h2{font-size:28px}.hero-actions{position:absolute;right:14px;top:14px}.dash-stats,.dashboard-primary,.dashboard-secondary,.mini-course-grid{grid-template-columns:1fr}.dashboard-primary .dash-panel:first-child{grid-column:auto}.ai-dock{grid-template-columns:1fr}.dash-focus-row{grid-template-columns:30px 22px 1fr}.dash-time,.dash-focus-row .soft-tag{display:none}}
+@media(max-width:700px){.assistant-thread{max-height:48vh}.assistant-msg{max-width:94%}.assistant-toolbar .btn{padding:9px 11px}}
 @media(min-width:1051px) and (min-height:760px){
  .main{padding:14px 20px 16px}.topbar{margin-bottom:9px;padding:6px 10px}.search{padding:9px 12px}.avatar,.icon-button{width:34px;height:34px}.dashboard-hero{min-height:102px;padding:15px 22px;border-radius:19px}.dashboard-hero h2{font-size:29px;margin-bottom:3px}.dashboard-hero p{font-size:13px}.hero-quote{font-size:15px}.hero-actions .btn{padding:8px 10px}.dash-stats{gap:8px;margin:8px 0}.dash-stat{grid-template-columns:35px 1fr;gap:8px;padding:9px 11px;border-radius:14px}.dash-stat-icon{width:35px;height:35px;font-size:17px}.dash-stat strong{font-size:19px}.dash-stat span{font-size:11px}.dash-stat small{font-size:10px;margin-top:2px}.dashboard-primary,.dashboard-secondary{gap:8px}.dashboard-secondary{margin-top:8px}.dash-panel{border-radius:15px}.dash-panel-head{padding:10px 13px 8px}.dash-panel-head h3{font-size:14px}.dash-panel-body{padding:3px 12px 8px}.dash-focus-row{grid-template-columns:26px 18px 1fr auto auto;padding:6px 8px;margin:3px 0;border-radius:10px}.focus-emoji{width:26px;height:26px;border-radius:8px;font-size:13px}.focus-copy b{font-size:12px}.soft-tag{padding:3px 7px;font-size:9px}.dash-time{font-size:10px}.dash-mail-row{grid-template-columns:28px 1fr auto;padding:6px 0}.sender-dot{width:28px;height:28px;font-size:11px}.mail-copy b{font-size:11px}.mail-copy span{font-size:10px;margin-top:1px}.priority-badge{padding:3px 6px;font-size:9px}.agenda-row{padding:5px 0 5px 16px}.agenda-row b,.agenda-row span{font-size:10px}.agenda-row .small{font-size:9px}.mini-course-grid{gap:7px;padding:8px}.mini-course{padding:8px;border-radius:11px}.course-color{width:28px;height:28px;border-radius:8px;margin-bottom:5px}.mini-course h4{font-size:11px}.mini-course p{font-size:9px;min-height:22px;margin-bottom:4px}.mini-course .small{font-size:9px}.ranked-row,.watch-row{padding:5px 0}.ranked-row b,.watch-row b{font-size:10px}.ranked-row span,.watch-value,.watch-row .small{font-size:9px}.rank{width:18px;height:18px;font-size:9px}.ai-dock{margin-top:8px;padding:7px 10px;border-radius:14px;gap:6px}.ai-dock-title b{font-size:12px}.ai-dock-title span{font-size:9px}.quick-action{padding:7px 8px;font-size:10px}.ai-dock-input input{padding:7px 8px;font-size:10px}.ai-send{height:31px}.dashboard-primary{min-height:214px}.dashboard-secondary{min-height:186px}
 }
@@ -348,7 +356,7 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
 
     <section id="markets" class="page">
       <h2 class="page-title">Markets · 全球观察</h2>
-      <p>正在加载市场观察页。若未显示，请刷新并确认市场模块已经部署。</p>
+      <p>正在加载市场观察页。若未显示，请刷新并确认 markets.js 与此网页位于同一文件夹。</p>
     </section>
 
     <section id="calendar" class="page">
@@ -753,14 +761,15 @@ document.querySelectorAll('.mail-cats .pill').forEach(btn=>btn.onclick=()=>{docu
 
 renderAssignments();renderPapers();renderCalendar();renderDashboard();
 </script>
-<script type="module" src="pdf.worker.classic.js"></script>
-<script type="module" src="pdf.classic.js"></script>
+<script src="pdf.worker.classic.js"></script>
+<script src="pdf.classic.js"></script>
 <script src="jszip.min.js"></script>
 
 <script src="course-engine.js"></script>
 <script src="dashboard-engine.js"></script>
+<script src="lecture-archive.js"></script>
 <script src="workspace-api.js"></script>
-<script type="module" src="papers.js"></script>
+<script src="papers.js"></script>
 <script src="markets-catalog.js"></script>
 <script src="markets-rules.js"></script>
 <script src="markets-view.js"></script>

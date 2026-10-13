@@ -14,6 +14,25 @@ test('assistant Gmail checkbox provides explicit one-time consent without a seco
   assert.match(source,/consent:Boolean\(includeGmail\)/);
   assert.match(source,/本次分析最近 7 天的 Gmail 摘要/);
 });
+test('assistant history supports confirmed record deletion and clearing',()=>{
+  assert.match(source,/删除记录/);
+  assert.match(source,/清空记录/);
+  const historyCode=source.slice(source.indexOf('  function assistantHistoryEntries()'),source.indexOf('  function context()'));
+  const s={workspaceState:{chat:[{role:'user',text:'Question 1'},{role:'ai',text:'Answer 1'},{role:'user',text:'Question 2'},{role:'ai',text:'Answer 2'}]},confirm:()=>true};
+  s.saveWorkspaceState=()=>{s.saved=(s.saved||0)+1;};s.openAssistant=()=>{s.opened=(s.opened||0)+1;};s.toast=value=>{s.toastValue=value;};
+  s.window=s;vm.createContext(s);vm.runInContext('let busy=false;'+historyCode,s);
+  const entries=vm.runInContext('assistantHistoryEntries().map(({start,count})=>({start,count}))',s);
+  assert.deepEqual(JSON.parse(JSON.stringify(entries)),[{start:0,count:2},{start:2,count:2}]);
+  s.deleteAssistantRecord(0,2);assert.deepEqual(s.workspaceState.chat.map(x=>x.text),['Question 2','Answer 2']);assert.equal(s.saved,1);assert.equal(s.opened,1);
+  s.clearAssistantHistory();assert.deepEqual(JSON.parse(JSON.stringify(s.workspaceState.chat)),[]);assert.equal(s.saved,2);assert.equal(s.opened,2);assert.equal(s.toastValue,'AI 对话记录已清空');
+});
+test('assistant deletion is cancelled without changing saved history',()=>{
+  const historyCode=source.slice(source.indexOf('  function assistantHistoryEntries()'),source.indexOf('  function context()'));
+  const s={workspaceState:{chat:[{role:'user',text:'Keep me'},{role:'ai',text:'Keep this answer'}]},confirm:()=>false};
+  s.saveWorkspaceState=()=>{s.saved=true;};s.openAssistant=()=>{};s.toast=()=>{};
+  s.window=s;vm.createContext(s);vm.runInContext('let busy=false;'+historyCode,s);s.deleteAssistantRecord(0,2);
+  assert.equal(s.workspaceState.chat.length,2);assert.equal(s.saved,undefined);
+});
 test('startup checks authorization then syncs; an empty mailbox is still connected',async()=>{
   const s=setup({authenticated:true,gmailConfigured:true,gmailConnected:true},{emails:[],account:'owner',lastSync:'2026-10-09T08:00:00Z',inboxUnread:0});
   await s.checkWorkspaceConnection(true);assert.equal(s.gmailSnapshot.connectionPhase,'synced');assert.equal(s.mails.length,0);

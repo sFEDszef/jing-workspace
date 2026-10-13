@@ -77,8 +77,31 @@
     }).join('');
   }
   openAssistant = function () {
-    const history = workspaceState.chat.slice(-10);
-    openModal(`<h2>Ask a Question · Jing Workspace</h2><p class="small">${base() ? '通过你的私人后端调用模型。邮件仅在勾选分析选项后读取。' : '本地规则模式 · 尚未连接 DeepSeek，可查看本地任务状态。'}</p><button class="btn ghost" onclick="openWorkspaceConnection()">AI & Gmail settings</button><div class="assistant-thread" id="assistantThread">${history.map(m=>`<div class="assistant-msg ${m.role==='user'?'user':'ai'}">${m.role==='user'?escapeText(m.text):renderAssistantText(m.text)}</div>`).join('')}</div><textarea id="assistantQuestion" placeholder="我最近有哪些需要处理的邮件和作业？" ${busy?'disabled':''}></textarea><label class="check-row"><input type="checkbox" id="askIncludeGmail" ${config.gmailAiConsent?'checked':''} ${busy?'disabled':''}><span>本次分析最近 7 天的 Gmail 摘要（发送至私人后端与 DeepSeek；不包含附件或完整正文）</span></label><button class="btn" onclick="askWorkspace()" ${busy?'disabled':''}>${busy?'正在分析…':'Ask'}</button>`);
+    const history=assistantHistoryEntries().slice(-5);
+    const records=history.length?history.map(record=>`<div class="assistant-exchange">${record.messages.map(m=>`<div class="assistant-msg ${m.role}">${m.role==='user'?escapeText(m.text):renderAssistantText(m.text)}</div>`).join('')}<div class="assistant-record-actions"><button class="assistant-delete" type="button" aria-label="删除这组问答记录" onclick="deleteAssistantRecord(${record.start},${record.count})" ${busy?'disabled':''}>删除记录</button></div></div>`).join(''):'<div class="assistant-empty">还没有对话记录。你可以从下面开始提问。</div>';
+    openModal(`<h2>Ask a Question · Jing Workspace</h2><p class="small">${base() ? '通过你的私人后端调用模型。邮件仅在勾选分析选项后读取。' : '本地规则模式 · 尚未连接 DeepSeek，可查看本地任务状态。'}</p><div class="assistant-toolbar"><button class="btn ghost" onclick="openWorkspaceConnection()">AI & Gmail settings</button>${workspaceState.chat.length?`<button class="btn ghost danger-text" type="button" onclick="clearAssistantHistory()" ${busy?'disabled':''}>清空记录</button>`:''}</div><div class="assistant-thread" id="assistantThread">${records}</div><textarea id="assistantQuestion" placeholder="我最近有哪些需要处理的邮件和作业？" ${busy?'disabled':''}></textarea><label class="check-row"><input type="checkbox" id="askIncludeGmail" ${config.gmailAiConsent?'checked':''} ${busy?'disabled':''}><span>本次分析最近 7 天的 Gmail 摘要（发送至私人后端与 DeepSeek；不包含附件或完整正文）</span></label><button class="btn" onclick="askWorkspace()" ${busy?'disabled':''}>${busy?'正在分析…':'Ask'}</button>`);
+  };
+  function assistantHistoryEntries() {
+    const entries=[];
+    (Array.isArray(workspaceState.chat)?workspaceState.chat:[]).forEach((message,index)=>{
+      const item={role:message?.role==='user'?'user':'ai',text:String(message?.text||'')};
+      const current=entries[entries.length-1];
+      if(item.role==='ai'&&current&&current.messages[0]?.role==='user'&&!current.messages.some(entry=>entry.role==='ai')){
+        current.messages.push(item);current.count=index-current.start+1;
+      }else entries.push({start:index,count:1,messages:[item]});
+    });
+    return entries;
+  }
+  window.deleteAssistantRecord = function(start,count) {
+    if(busy)return;
+    if(!Number.isInteger(start)||!Number.isInteger(count)||start<0||count<1||start+count>workspaceState.chat.length)return;
+    if(!window.confirm('删除这组问答记录？删除后无法恢复。'))return;
+    workspaceState.chat.splice(start,count);saveWorkspaceState();openAssistant();toast('这组问答记录已删除');
+  };
+  window.clearAssistantHistory = function() {
+    if(busy||!workspaceState.chat.length)return;
+    if(!window.confirm('清空全部 AI 对话记录？删除后无法恢复。'))return;
+    workspaceState.chat=[];saveWorkspaceState();openAssistant();toast('AI 对话记录已清空');
   };
   function context() {
     return { date:new Date().toISOString(), assignments:(workspaceState.customAssignments||[]).slice(0,30).map(a=>({title:a.title,course:a.course,done:a.done,dueAt:a.dueAt})), generatedAssignments:(workspaceState.generatedAssignments||[]).slice(0,20).map(a=>({title:a.title,course:a.course,source:a.source,done:a.done})), tasks:(workspaceState.miscTasks||[]).slice(0,30).map(t=>({title:t.title,done:t.done,dueAt:t.dueAt})), events:(workspaceState.events||[]).slice(0,30).map(e=>({title:e.title,date:e.date,time:e.time,end:e.end,recurring:e.recurring})), papers:(workspaceState.papers||[]).filter(p=>p.fileName||!/^p[1-4]$/.test(p.id)).slice(0,20).map(p=>({title:p.title,status:p.status,course:p.course})) };
