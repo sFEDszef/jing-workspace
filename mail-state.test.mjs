@@ -9,6 +9,11 @@ function setup(status,payload,code=200){
   const s={URL,Date,AbortSignal,gmailSnapshot:{lastSync:'Not connected'},mails:[],localStorage:{getItem:()=>JSON.stringify({backendUrl:'https://workspace.example'}),setItem:()=>{}},document:{getElementById:()=>null},renderGmailSnapshot:()=>{},renderDashboard:()=>{},toast:()=>{},fetch:async(url)=>({ok:url.endsWith('/api/status')||code===200,status:url.endsWith('/api/status')?200:code,json:async()=>url.endsWith('/api/status')?status:payload})};
   s.window=s;vm.createContext(s);vm.runInContext(prefix+sync,s);return s;
 }
+test('assistant Gmail checkbox provides explicit one-time consent without a second settings gate',()=>{
+  assert.doesNotMatch(source,/includeGmail\s*&&\s*!config\.gmailAiConsent/);
+  assert.match(source,/consent:Boolean\(includeGmail\)/);
+  assert.match(source,/本次分析最近 7 天的 Gmail 摘要/);
+});
 test('startup checks authorization then syncs; an empty mailbox is still connected',async()=>{
   const s=setup({authenticated:true,gmailConfigured:true,gmailConnected:true},{emails:[],account:'owner',lastSync:'2026-10-09T08:00:00Z',inboxUnread:0});
   await s.checkWorkspaceConnection(true);assert.equal(s.gmailSnapshot.connectionPhase,'synced');assert.equal(s.mails.length,0);
