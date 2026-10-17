@@ -11,6 +11,12 @@
   const noteDrafts=new Map();let pendingWrites=0;
   const byId=id=>state.papers.find(p=>p.id===id);
   const $=id=>document.getElementById(id);
+  function pdfApi(){
+    const api=globalThis.pdfjsLib;
+    if(!api?.getDocument)throw new Error('PDF 阅读器未能加载。请刷新页面；若仍失败，请使用“打开原文件”并稍后重试。');
+    if(api.GlobalWorkerOptions)api.GlobalWorkerOptions.workerSrc=new URL('pdf.worker.classic.js',document.baseURI).href;
+    return api;
+  }
   const button=(label,action,id='',extra='')=>`<button class="btn ghost" data-paper-action="${action}" data-id="${e(id)}" ${extra}>${label}</button>`;
   const options=(values,current)=>values.map(([v,label])=>`<option value="${e(v)}" ${v===current?'selected':''}>${e(label)}</option>`).join('');
   const courses=()=>[['Unlinked','未关联课程'],...Object.keys(courseCatalog).map(c=>[c,c])];
@@ -50,7 +56,7 @@
   async function parsePDF(file){
     if(file.size>MAX_FILE)throw new Error('单份 PDF 限 40 MB，请压缩后上传。');
     if(!/\.pdf$/i.test(file.name||'')&&file.type!=='application/pdf')throw new Error('此入口支持 PDF；旧记录及其文件仍可打开。');
-    const doc=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+    const doc=await pdfApi().getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
     try{if(doc.numPages>500)throw new Error('单份 PDF 限 500 页，请分卷上传。');const pages=[];
       for(let i=1;i<=doc.numPages;i++){const pg=await doc.getPage(i),c=await pg.getTextContent();pages.push({page:i,text:c.items.map(x=>(x.str||'')+(x.hasEOL?'\n':' ')).join('').trim()});}
       const meta=await doc.getMetadata().catch(()=>({info:{}})),info=meta.info||{};
@@ -71,7 +77,7 @@
   openPaper=async function(id){await initialized;const p=byId(id);if(!p)return;closeModal();closeReader();reader=id;side='understand';mobile='document';lastError='';readerShell(p);const current=id;
     try{if(p.fileDeleted)throw new Error('原文件已删除。保留的笔记、证据和分析仍可查看与导出。');const file=await dbRead('paper-'+id);if(!file)throw new Error('此记录没有本地原文件；请重新上传 PDF。原有笔记已保留。');
       if(!/\.pdf$/i.test(p.fileName||'')&&file.type!=='application/pdf')throw new Error('旧格式文件可通过“打开原文件”下载；内嵌阅读支持 PDF。');
-      const loaded=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;if(reader!==current){loaded.destroy();return}pdf=loaded;
+      const loaded=await pdfApi().getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;if(reader!==current){loaded.destroy();return}pdf=loaded;
       if(!p.pages.length){const parsed=await parsePDF(new File([file],p.fileName,{type:'application/pdf'}));await commit(s=>Object.assign(s.papers.find(x=>x.id===id),{pages:parsed.pages,parseStatus:parsed.parseStatus}));}
       if(reader!==current)return;$('paperTotalPages').textContent='/ '+pdf.numPages;$('paperPageNumber').max=pdf.numPages;renderSide();await renderPage();await commit(s=>{const q=s.papers.find(x=>x.id===id);if(q){if(q.status==='Queued')q.status='Reading';q.furthest=Math.max(q.furthest||0,q.page)}});
     }catch(err){if(reader!==current)return;$('paperPage').hidden=true;$('paperPdfStatus').textContent=errorText(err);$('paperPdfStatus').className='paper-error';}
@@ -83,7 +89,7 @@
       box.hidden=false;box.style.width=viewport.width+'px';box.style.height=viewport.height+'px';canvas.width=Math.ceil(viewport.width*dpr);canvas.height=Math.ceil(viewport.height*dpr);canvas.style.width=viewport.width+'px';canvas.style.height=viewport.height+'px';layer.replaceChildren();
       renderTask=page.render({canvasContext:canvas.getContext('2d'),viewport,transform:dpr===1?null:[dpr,0,0,dpr,0,0]});await renderTask.promise;if(serial!==renderSerial)return;const content=await page.getTextContent();if(serial!==renderSerial)return;
       const measure=document.createElement('canvas').getContext('2d');
-      for(const item of content.items){if(!item.str)continue;const tx=pdfjsLib.Util.transform(viewport.transform,item.transform),fontHeight=Math.hypot(tx[2],tx[3]),style=content.styles[item.fontName]||{},ascent=(style.ascent??(style.descent?1+style.descent:.8))*fontHeight,angle=Math.atan2(tx[1],tx[0]);const span=document.createElement('span');span.textContent=item.str;const font=style.fontFamily||'sans-serif';span.style.fontFamily=font;span.style.fontSize=fontHeight+'px';span.style.left=(tx[4]+ascent*Math.sin(angle))+'px';span.style.top=(tx[5]-ascent*Math.cos(angle))+'px';measure.font=fontHeight+'px '+font;const width=measure.measureText(item.str).width;span.style.transform=`rotate(${angle}rad) scaleX(${width?item.width*viewport.scale/width:1})`;layer.append(span);if(item.hasEOL)layer.append(document.createElement('br'));}
+      for(const item of content.items){if(!item.str)continue;const tx=pdfApi().Util.transform(viewport.transform,item.transform),fontHeight=Math.hypot(tx[2],tx[3]),style=content.styles[item.fontName]||{},ascent=(style.ascent??(style.descent?1+style.descent:.8))*fontHeight,angle=Math.atan2(tx[1],tx[0]);const span=document.createElement('span');span.textContent=item.str;const font=style.fontFamily||'sans-serif';span.style.fontFamily=font;span.style.fontSize=fontHeight+'px';span.style.left=(tx[4]+ascent*Math.sin(angle))+'px';span.style.top=(tx[5]-ascent*Math.cos(angle))+'px';measure.font=fontHeight+'px '+font;const width=measure.measureText(item.str).width;span.style.transform=`rotate(${angle}rad) scaleX(${width?item.width*viewport.scale/width:1})`;layer.append(span);if(item.hasEOL)layer.append(document.createElement('br'));}
       layer.onmouseup=captureSelection;layer.onkeyup=captureSelection;layer.ontouchend=()=>setTimeout(captureSelection,100);
       $('paperPageNumber').value=p.page;$('paperZoom').textContent=Math.round(p.zoom*100)+'%';$('paperPdfStatus').textContent=content.items.some(i=>i.str?.trim())?'选中原文可高亮、批注或保存为证据。':'本页没有可选择文字，需要 OCR；仍可阅读图像、写普通笔记。';$('paperPdfStatus').className='paper-notice';paintMarks(focusId);$('paperPdfScroll').scrollTop=0;
       if(focusId){const mark=$('paperMarks').querySelector('.located');mark?.scrollIntoView({block:'center',inline:'nearest'})}
