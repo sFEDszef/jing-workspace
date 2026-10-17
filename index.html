@@ -578,9 +578,17 @@ let workspaceState=readWorkspaceState();
 delete workspaceState.moodle;
 Object.keys(workspaceState.courseUploads||{}).forEach(code=>{const kept=[],removed=[];(workspaceState.courseUploads[code]||[]).forEach(file=>(file.source==='Moodle'||String(file.id||'').startsWith('moodle-')?removed:kept).push(file));workspaceState.courseUploads[code]=kept;removed.forEach(file=>{if(file.id)deleteWorkspaceFile(file.id)})});
 sessionStorage.removeItem('jingMoodleToken');
-const classSchedule=[];
+const classSchedule=[
+  {id:'class-eds6001',course:'EDS6001',title:'EDS6001 · Research Methods for Interdisciplinary Studies',date:'2026-08-31',time:'14:30',end:'17:20',until:'2026-12-05',location:'XC-G04-01',module:'Course',recurring:true},
+  {id:'class-eds6019',course:'EDS6019',title:'EDS6019 · AI for Teaching and Learning',date:'2026-09-01',time:'09:30',end:'12:20',until:'2026-12-05',location:'B2-LP-20',module:'Course',recurring:true},
+  {id:'class-ece6156',course:'ECE6156',title:'ECE6156 · Language and Literacy Development in Children',date:'2026-09-01',time:'18:30',end:'21:20',until:'2026-12-05',location:'B2-G/F-05',module:'Course',recurring:true},
+  {id:'class-cui6078',course:'CUI6078',title:'CUI6078 · Curriculum Leadership · Elective',date:'2026-09-02',time:'12:30',end:'15:20',until:'2026-12-12',location:'N-3/F-02',module:'Course',recurring:true}
+];
 workspaceState.events=(workspaceState.events||[]).filter(e=>!(e.id==='e1'&&e.title==='EDS6001'));
-classSchedule.forEach(item=>{const i=workspaceState.events.findIndex(e=>e.id===item.id);if(i>=0)workspaceState.events[i]={...workspaceState.events[i],...item};else workspaceState.events.push({...item})});
+classSchedule.forEach(item=>{
+  const alreadySaved=workspaceState.events.some(e=>e.id===item.id||(e.module==='Course'&&e.recurring&&(e.course===item.course||String(e.title||'').includes(item.course))));
+  if(!alreadySaved)workspaceState.events.push({...item});
+});
 localStorage.setItem('jingWorkspaceStateV1',JSON.stringify(workspaceState));
 function saveWorkspaceState(){localStorage.setItem('jingWorkspaceStateV1',JSON.stringify(workspaceState));if(typeof renderDashboard==='function')renderDashboard()}
 function toast(message){const t=document.getElementById('statusToast');t.textContent=message;t.classList.add('show');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.classList.remove('show'),1800)}
