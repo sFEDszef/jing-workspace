@@ -6,16 +6,28 @@
   const colorNames={yellow:'重要观点',blue:'研究方法',green:'可用证据',pink:'局限',purple:'疑问'};
   const fields=['研究问题','理论','研究方法','样本','主要发现','局限'];
   const e=value=>escapeText(value??''), uid=()=>crypto.randomUUID(), clone=x=>structuredClone(x);
-  let state={version:2,papers:[],comparisons:[]}, ready=false, queue=Promise.resolve(), reader=null, pdf=null, renderTask=null, renderSerial=0, selected=null, aiBusy=false;
+  let state={version:2,papers:[],comparisons:[]}, ready=false, queue=Promise.resolve(), reader=null, pdf=null, renderTask=null, renderSerial=0, selected=null, aiBusy=false, pdfLoader=null;
   let query='',courseFilter='',statusFilter='', side='understand', mobile='document', editor=null, lastError='', saveNumber=0;
   const noteDrafts=new Map();let pendingWrites=0;
   const byId=id=>state.papers.find(p=>p.id===id);
   const $=id=>document.getElementById(id);
-  function pdfApi(){
-    const api=globalThis.pdfjsLib;
+  function configurePdfApi(api){
     if(!api?.getDocument)throw new Error('PDF 阅读器未能加载。请刷新页面；若仍失败，请使用“打开原文件”并稍后重试。');
     if(api.GlobalWorkerOptions)api.GlobalWorkerOptions.workerSrc=new URL('pdf.worker.classic.js',document.baseURI).href;
     return api;
+  }
+  function pdfApi(){
+    const api=globalThis.pdfjsLib;
+    return configurePdfApi(api);
+  }
+  async function loadPdfApi(){
+    if(globalThis.pdfjsLib?.getDocument)return pdfApi();
+    if(!pdfLoader)pdfLoader=import('./pdf.classic.js').then(()=>configurePdfApi(globalThis.pdfjsLib)).catch(err=>{
+      pdfLoader=null;
+      console.error('PDF reader failed to load',err);
+      throw new Error('PDF 阅读器未能加载。请刷新页面后重试；已上传的文件不会生成空记录。');
+    });
+    return pdfLoader;
   }
   const button=(label,action,id='',extra='')=>`<button class="btn ghost" data-paper-action="${action}" data-id="${e(id)}" ${extra}>${label}</button>`;
   const options=(values,current)=>values.map(([v,label])=>`<option value="${e(v)}" ${v===current?'selected':''}>${e(label)}</option>`).join('');
@@ -56,7 +68,8 @@
   async function parsePDF(file){
     if(file.size>MAX_FILE)throw new Error('单份 PDF 限 40 MB，请压缩后上传。');
     if(!/\.pdf$/i.test(file.name||'')&&file.type!=='application/pdf')throw new Error('此入口支持 PDF；旧记录及其文件仍可打开。');
-    const doc=await pdfApi().getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+    const api=await loadPdfApi();
+    const doc=await api.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
     try{if(doc.numPages>500)throw new Error('单份 PDF 限 500 页，请分卷上传。');const pages=[];
       for(let i=1;i<=doc.numPages;i++){const pg=await doc.getPage(i),c=await pg.getTextContent();pages.push({page:i,text:c.items.map(x=>(x.str||'')+(x.hasEOL?'\n':' ')).join('').trim()});}
       const meta=await doc.getMetadata().catch(()=>({info:{}})),info=meta.info||{};
@@ -77,7 +90,8 @@
   openPaper=async function(id){await initialized;const p=byId(id);if(!p)return;closeModal();closeReader();reader=id;side='understand';mobile='document';lastError='';readerShell(p);const current=id;
     try{if(p.fileDeleted)throw new Error('原文件已删除。保留的笔记、证据和分析仍可查看与导出。');const file=await dbRead('paper-'+id);if(!file)throw new Error('此记录没有本地原文件；请重新上传 PDF。原有笔记已保留。');
       if(!/\.pdf$/i.test(p.fileName||'')&&file.type!=='application/pdf')throw new Error('旧格式文件可通过“打开原文件”下载；内嵌阅读支持 PDF。');
-      const loaded=await pdfApi().getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;if(reader!==current){loaded.destroy();return}pdf=loaded;
+      const api=await loadPdfApi();
+      const loaded=await api.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;if(reader!==current){loaded.destroy();return}pdf=loaded;
       if(!p.pages.length){const parsed=await parsePDF(new File([file],p.fileName,{type:'application/pdf'}));await commit(s=>Object.assign(s.papers.find(x=>x.id===id),{pages:parsed.pages,parseStatus:parsed.parseStatus}));}
       if(reader!==current)return;$('paperTotalPages').textContent='/ '+pdf.numPages;$('paperPageNumber').max=pdf.numPages;renderSide();await renderPage();await commit(s=>{const q=s.papers.find(x=>x.id===id);if(q){if(q.status==='Queued')q.status='Reading';q.furthest=Math.max(q.furthest||0,q.page)}});
     }catch(err){if(reader!==current)return;$('paperPage').hidden=true;$('paperPdfStatus').textContent=errorText(err);$('paperPdfStatus').className='paper-error';}
